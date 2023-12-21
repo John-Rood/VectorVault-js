@@ -178,7 +178,7 @@ runTests(user, vault, api, openai_key);
 
 
 
-// const vectorVault = new VectorVaultAPI(user, vault, api, openai_key);
+// const vectorVault = new VectorVault(user, vault, api, openai_key);
 
 // // Define the parameters for the getChat method as an object
 // const chatParams = {
