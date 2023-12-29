@@ -1,5 +1,5 @@
-class VectorVault {
-    constructor(user, vault, apiKey, openAIKey) {
+export default class VectorVault {
+    constructor(user, vault, apiKey, openAIKey=null) {
         this.user = user;
         this.vault = vault;
         this.apiKey = apiKey;
@@ -175,7 +175,28 @@ class VectorVault {
             }
         });
     }
+    
+    delete() {
+        // deletes entire vault
+        const url = "https://api.vectorvault.io/delete_vault";
 
+        const data = {
+            user: this.user,
+            vault: this.vault,
+            api_key: this.apiKey
+        };
+
+        // Send the POST request
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json());
+    }
+    
     deleteItems(itemId) {
         const url = "https://api.vectorvault.io/delete_items";
 
