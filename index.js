@@ -1,9 +1,10 @@
 export default class VectorVault {
-    constructor(user, vault, apiKey, openAIKey=null) {
+    constructor(user, vault, apiKey, openAIKey=null, embeddingsModel=null) {
         this.user = user;
         this.vault = vault;
         this.apiKey = apiKey;
         this.openAIKey = openAIKey;
+        this.embeddingsModel = embeddingsModel;
     }
 
     getChat(params) {
@@ -14,6 +15,7 @@ export default class VectorVault {
             vault: this.vault,
             api_key: this.apiKey,
             openai_key: this.openAIKey,
+            embeddings_model: this.embeddingsModel,
             text: '',
             history: null,
             summary: false,
@@ -49,6 +51,7 @@ export default class VectorVault {
             vault: this.vault,
             api_key: this.apiKey,
             openai_key: this.openAIKey,
+            embeddings_model: this.embeddingsModel,
             text: '',
             history: null,
             summary: false,
@@ -125,6 +128,69 @@ export default class VectorVault {
         });
     }
 
+    downloadToJson(params) {
+        // itemIds must be a list of integers
+        const url = "https://api.vectorvault.io/download_to_json";
+
+        const data = {
+            user: this.user,
+            api_key: this.apiKey,
+            vault: this.vault,
+            return_meta: false,
+            ...params
+        };
+
+        // Send the POST request
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                return response.json().then(json => {
+                    throw new Error("Failed: " + JSON.stringify(json));
+                });
+            }
+        });
+    }
+
+    uploadFromJson(json) {
+        // itemIds must be a list of integers
+        const url = "https://api.vectorvault.io/upload_from_json";
+
+        const data = {
+            user: this.user,
+            api_key: this.apiKey,
+            vault: this.vault,
+            openai_key: this.openAIKey,
+            embeddings_model: this.embeddingsModel,
+            json: json
+        };
+
+        // Send the POST request
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                return response.json().then(json => {
+                    throw new Error("Failed: " + JSON.stringify(json));
+                });
+            }
+        });
+    }
+
     editItem(itemId, newText) {
         const url = "https://api.vectorvault.io/edit_item";
 
@@ -133,6 +199,7 @@ export default class VectorVault {
             vault: this.vault,
             api_key: this.apiKey,
             openai_key: this.openAIKey,
+            embeddings_model: this.embeddingsModel,
             item_id: itemId,
             text: newText
         };
@@ -197,14 +264,18 @@ export default class VectorVault {
         .then(response => response.json());
     }
     
-    deleteItems(itemId) {
+    deleteItems(itemIds) {
+        // itemIds is a list of integers. If you only have one item to delete, pass in a list with the single item id inside 
+        // (i.e. [252])
+        // (i.e. [1, 2, 3, 4, 5, 6])
+
         const url = "https://api.vectorvault.io/delete_items";
 
         const data = {
             user: this.user,
             vault: this.vault,
             api_key: this.apiKey,
-            item_id: itemId
+            item_ids: itemIds
         };
 
         // Send the POST request
@@ -226,6 +297,7 @@ export default class VectorVault {
             vault: this.vault,
             api_key: this.apiKey,
             openai_key: this.openAIKey,
+            embeddings_model: this.embeddingsModel,
             text: '',
             meta: null,
             name: null,
@@ -254,6 +326,7 @@ export default class VectorVault {
             vault: this.vault,
             api_key: this.apiKey,
             openai_key: this.openAIKey,
+            embeddings_model: this.embeddingsModel,
             site: '',
             ...params
         };
@@ -269,13 +342,14 @@ export default class VectorVault {
         .then(response => response.json());
     }
 
-    getVaults() {
+    getVaults(searchVault = null) {
         const url = "https://api.vectorvault.io/get_vaults";
 
         const data = {
             user: this.user,
             vault: this.vault,
-            api_key: this.apiKey
+            api_key: this.apiKey,
+            search_vault: searchVault
         };
 
         // Send the POST request
@@ -319,6 +393,7 @@ export default class VectorVault {
             vault: this.vault,
             api_key: this.apiKey,
             openai_key: this.openAIKey,
+            embeddings_model: this.embeddingsModel,
             text: '',
             num_items: 4,
             include_distances: false,
@@ -405,6 +480,27 @@ export default class VectorVault {
             user: this.user,
             vault: this.vault,
             api_key: this.apiKey,
+        };
+
+        // Send the POST request
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json());
+    }
+
+    fetch3DMap(highlightId = null) {
+        const url = "https://api.vectorvault.io/get_map";
+
+        const data = {
+            user: this.user,
+            vault: this.vault,
+            api_key: this.apiKey,
+            highlight_id: highlightId
         };
 
         // Send the POST request
