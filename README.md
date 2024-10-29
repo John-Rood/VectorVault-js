@@ -30,9 +30,11 @@ import VectorVault from 'vectorvault';
 // Create a VectorVault instance 
 const vectorVault = new VectorVault(); 
 
-await vectorVault.login('your_email@example.com', 'your_password'); // Login w/password
-// OR 
-await vectorVault.loginAPI('your_email@example.com', 'your_api_key'); //Login w/api
+// Login w/password
+await vectorVault.login('your_email@example.com', 'your_password');
+
+// OR Login w/api
+await vectorVault.loginAPI('your_email@example.com', 'your_api_key'); 
 ```
 
 ## Basic Operations
