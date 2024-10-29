@@ -13,7 +13,7 @@ There are two ways to integrate VectorVault into your project:
 npm install vectorvault --save
 ```
 
-### 2. Via CDN (for direct browser usage)
+### 2. Via CDN (for HTML)
 
 Add the following script tag to your HTML:
 
