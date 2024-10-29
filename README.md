@@ -5,8 +5,6 @@ VectorVault API - JavaScript Client: Streamline your front-end development with 
 
 ## Installation
 
-There are two ways to integrate VectorVault into your project:
-
 ### 1. Via NPM (for React/Node.js/bundled projects)
 
 ```bash
