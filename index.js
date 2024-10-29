@@ -238,9 +238,7 @@ export default class VectorVault {
                 if (line.startsWith('data:')) {
                     const jsonData = JSON.parse(line.substring('data: '.length));
                     const word = jsonData['data'];
-                    if (word !== '!END') {
-                        callback(word); // Call the callback function with the data
-                    }
+                    callback(word); 
                 }
             }
         }
