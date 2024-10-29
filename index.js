@@ -39,6 +39,37 @@ export default class VectorVault {
         }
     }
 
+    // Method to log in the user and obtain JWT tokens via API
+    async loginWithApiKey(apiKey) {
+        const url = `${this.baseUrl}/login_api_key`;
+
+        const data = {
+            api_key: apiKey
+        };
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            const json = await response.json();
+            this.accessToken = json.access_token;
+            this.refreshToken = json.refresh_token;
+
+            // Decode the JWT to get the expiration time
+            const payload = JSON.parse(atob(this.accessToken.split('.')[1]));
+            // JWT 'exp' claim is in seconds, convert to milliseconds
+            this.tokenExpiresAt = payload.exp * 1000;
+        } else {
+            const error = await response.json();
+            throw new Error("API Key Login failed: " + error.error);
+        }
+    }
+
     // Method to refresh the access token using the refresh token
     async refreshAccessToken() {
         const url = `${this.baseUrl}/refresh`;

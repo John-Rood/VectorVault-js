@@ -132,7 +132,7 @@ Make sure to replace `"Your query here"` with the actual text you want to send t
   await vectorVault.login('your_email@example.com', 'your_password');
   ```
 
-- **Logout**
+- **Logout** 
 
   ```javascript
   vectorVault.logout();
