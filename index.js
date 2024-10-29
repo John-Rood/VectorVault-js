@@ -114,6 +114,25 @@ export default class VectorVault {
         }
     }
 
+    getAccessToken() {
+      return this.accessToken;
+    }
+  
+    getRefreshToken() {
+      return this.refreshToken;
+    }
+  
+    setAccessToken(token) {
+      this.accessToken = token;
+      // Update tokenExpiresAt based on the token's expiration
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      this.tokenExpiresAt = payload.exp * 1000;
+    }
+  
+    setRefreshToken(token) {
+      this.refreshToken = token;
+    }
+
     // Method to get chat response
     async getChat(params) {
         const url = `${this.baseUrl}/get_chat`;
@@ -591,7 +610,6 @@ export default class VectorVault {
             }
         }
     }
-    
 
     // Method to log out the user
     logout() {
