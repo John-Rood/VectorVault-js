@@ -130,7 +130,10 @@ Make sure to replace `"Your query here"` with the actual text you want to send t
 
   ```javascript
   await vectorVault.login('your_email@example.com', 'your_password');
+  // OR 
+  await vectorVault.loginAPI('your_email@example.com', 'your_api_key');
   ```
+
 
 - **Logout** 
 

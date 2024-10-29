@@ -40,8 +40,8 @@ export default class VectorVault {
     }
 
     // Method to log in the user and obtain JWT tokens via API
-    async loginWithApiKey(email, apiKey) {
-        const url = `${this.baseUrl}/login_api_key`;
+    async loginAPI(email, apiKey) {
+        const url = `${this.baseUrl}/login_with_api`;
 
         const data = {
             email: email,
