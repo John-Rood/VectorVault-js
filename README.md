@@ -13,12 +13,12 @@ npm install vectorvault --save
 
 ### 2. Via CDN (for HTML)
 
-Add the following script tag to your HTML:
-
 ```html
 <script src="https://cdn.jsdelivr.net/gh/John-Rood/VectorVault-js@main/dist/vectorvault.bundle.js"></script>
 ```
 
+<br />
+<br />
 ## Usage
 
 To use VectorVault, you need to import it, instantiate it, and log in with your user credentials:
