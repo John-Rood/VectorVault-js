@@ -23,6 +23,8 @@ const vectorVault = new VectorVault();
 
 // Log in with your email and password
 await vectorVault.login('your_email@example.com', 'your_password');
+// OR email and API key
+await vectorVault.loginAPI('your_email@example.com', 'your_api_key');
 ```
 
 ## Basic Operations
