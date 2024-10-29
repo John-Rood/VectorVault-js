@@ -2,13 +2,23 @@
 
 VectorVault API - JavaScript Client: Streamline your front-end development with the powerful capabilities of VectorVault's Cloud Vector Database. This JavaScript client provides seamless integration for building advanced RAG (Retrieve and Generate) applications. Whether you're working with JavaScript, HTML, or other web technologies, our API simplifies the process of fetching RAG responses through API POST requests. This package is the key to unlocking quick and efficient development for AI-powered web applications, ensuring a secure and robust connection to the VectorVault ecosystem. Start crafting exceptional RAG apps with minimal effort and maximum efficiency.
 
+
 ## Installation
 
-Install VectorVault via npm:
+There are two ways to integrate VectorVault into your project:
 
-```
+### 1. Via NPM (for Node.js/bundled projects)
+
+```bash
 npm install vectorvault --save
+```
 
+### 2. Via CDN (for direct browser usage)
+
+Add the following script tag to your HTML:
+
+```html
+<script src="https://cdn.jsdelivr.net/gh/John-Rood/VectorVault-js@main/dist/vectorvault.bundle.js"></script>
 ```
 
 ## Usage
