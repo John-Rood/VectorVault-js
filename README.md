@@ -19,6 +19,7 @@ npm install vectorvault --save
 
 <br />
 <br />
+
 ## Usage
 
 To use VectorVault, you need to import it, instantiate it, and log in with your user credentials:
