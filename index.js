@@ -1,4 +1,4 @@
-export default class VectorVault {
+export class VectorVault {
     constructor(embeddingsModel = null) {
         this.embeddingsModel = embeddingsModel;
         this.accessToken = null;
