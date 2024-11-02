@@ -1,10 +1,74 @@
-export class VectorVault {
+export default class VectorVault {
     constructor(embeddingsModel = null) {
         this.embeddingsModel = embeddingsModel;
         this.accessToken = null;
         this.refreshToken = null;
         this.tokenExpiresAt = null;
         this.baseUrl = 'https://api.vectorvault.io'
+        this.deploymentId = null;
+    }
+
+    async initializeDeployment(email, deploymentId) {
+        const url = `${this.baseUrl}/init_deployment`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Deployment-ID': deploymentId,
+                'X-Email': email
+            }
+        });
+
+        if (response.ok) {
+            const json = await response.json();
+            this.accessToken = json.access_token;
+            this.refreshToken = json.refresh_token;
+            this.deploymentId = deploymentId;
+
+            const payload = JSON.parse(atob(this.accessToken.split('.')[1]));
+            this.tokenExpiresAt = payload.exp * 1000;
+        } else {
+            const error = await response.json();
+            throw new Error("Deployment initialization failed: " + error.error);
+        }
+    }
+
+    async makeAuthenticatedRequest(url, options = {}) {
+        const now = Date.now();
+        if (this.tokenExpiresAt - now < 60000) {
+            const refreshed = await this.refreshAccessToken();
+            if (!refreshed) {
+                throw new Error("Session expired. Please log in again.");
+            }
+        }
+
+        options.headers = options.headers || {};
+        options.headers['Authorization'] = `Bearer ${this.accessToken}`;
+        options.headers['Content-Type'] = 'application/json';
+
+        const response = await fetch(url, options);
+
+        if (response.ok) {
+            return response;
+        } else if (response.status === 401) {
+            const refreshed = await this.refreshAccessToken();
+            if (refreshed) {
+                options.headers['Authorization'] = `Bearer ${this.accessToken}`;
+                const retryResponse = await fetch(url, options);
+                if (retryResponse.ok) {
+                    return retryResponse;
+                } else {
+                    const error = await retryResponse.json();
+                    throw new Error(`Request failed: ${error.error}`);
+                }
+            } else {
+                throw new Error("Session expired. Please log in again.");
+            }
+        } else {
+            const error = await response.json();
+            throw new Error(`Request failed: ${error.error}`);
+        }
     }
 
     // Method to log in the user and obtain JWT tokens
@@ -36,38 +100,6 @@ export class VectorVault {
         } else {
             const error = await response.json();
             throw new Error("Login failed: " + error.error);
-        }
-    }
-
-    // Method to log in the user and obtain JWT tokens via API
-    async loginAPI(email, apiKey) {
-        const url = `${this.baseUrl}/login_with_api`;
-
-        const data = {
-            email: email,
-            api_key: apiKey
-        };
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        });
-
-        if (response.ok) {
-            const json = await response.json();
-            this.accessToken = json.access_token;
-            this.refreshToken = json.refresh_token;
-
-            // Decode the JWT to get the expiration time
-            const payload = JSON.parse(atob(this.accessToken.split('.')[1]));
-            // JWT 'exp' claim is in seconds, convert to milliseconds
-            this.tokenExpiresAt = payload.exp * 1000;
-        } else {
-            const error = await response.json();
-            throw new Error("API Key Login failed: " + error.error);
         }
     }
 
@@ -104,47 +136,6 @@ export class VectorVault {
         }
     }
 
-    // Helper method to make authenticated API requests
-    async makeAuthenticatedRequest(url, options = {}) {
-        // Check if the access token is expired or about to expire in the next minute
-        const now = Date.now();
-        if (this.tokenExpiresAt - now < 60000) { // 1 minute buffer
-            const refreshed = await this.refreshAccessToken();
-            if (!refreshed) {
-                throw new Error("Session expired. Please log in again.");
-            }
-        }
-
-        // Add the Authorization header with the access token
-        options.headers = options.headers || {};
-        options.headers['Authorization'] = `Bearer ${this.accessToken}`;
-        options.headers['Content-Type'] = 'application/json';
-
-        const response = await fetch(url, options);
-
-        if (response.ok) {
-            return response;
-        } else if (response.status === 401) {
-            // Access token might have expired, try refreshing
-            const refreshed = await this.refreshAccessToken();
-            if (refreshed) {
-                // Retry the request with the new access token
-                options.headers['Authorization'] = `Bearer ${this.accessToken}`;
-                const retryResponse = await fetch(url, options);
-                if (retryResponse.ok) {
-                    return retryResponse;
-                } else {
-                    const error = await retryResponse.json();
-                    throw new Error(`Request failed: ${error.error}`);
-                }
-            } else {
-                throw new Error("Session expired. Please log in again.");
-            }
-        } else {
-            const error = await response.json();
-            throw new Error(`Request failed: ${error.error}`);
-        }
-    }
 
     getAccessToken() {
       return this.accessToken;
@@ -563,6 +554,47 @@ export class VectorVault {
         return response.json();
     }
 
+    // Method to run a flow without streaming response
+    async runFlow(flowName, message, history = '', callbacks = {}) {
+        const url = `${this.baseUrl}/flow`;
+
+        const data = {
+            email: this.email,
+            flow_id: flowName,
+            message,
+            history
+        };
+
+        try {
+            const response = await this.makeAuthenticatedRequest(url, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            const responseData = await response.json();
+            let logs = [];
+            let fullResponse = '';
+
+            if (responseData.status === 'success') {
+                fullResponse = responseData.response;
+                if (callbacks.onMessage) callbacks.onMessage(fullResponse);
+            } else {
+                throw new Error(responseData.response);
+            }
+
+            if (callbacks.onLog) callbacks.onLog(`Flow ${flowName} executed successfully.`);
+
+            return { response: fullResponse, logs };
+        } catch (error) {
+            console.error('Error running flow:', error);
+            if (callbacks.onError) callbacks.onError(error);
+            return { response: '', logs: [`Error: ${error.message}`] };
+        }
+    }
 
     // Method to run a flow with streaming response
     async runFlowStream(flowName, message, history = '', callbacks = {}) {
