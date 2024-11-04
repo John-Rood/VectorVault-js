@@ -106,33 +106,28 @@ export default class VectorVault {
     // Method to refresh the access token using the refresh token
     async refreshAccessToken() {
         const url = `${this.baseUrl}/refresh`;
-
-        const data = {
-            refresh_token: this.refreshToken
-        };
-
+      
         const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.refreshToken}`,
+          },
         });
-
+      
         if (response.ok) {
-            const json = await response.json();
-            this.accessToken = json.access_token;
-
-            // Update the token expiration time
-            const payload = JSON.parse(atob(this.accessToken.split('.')[1]));
-            this.tokenExpiresAt = payload.exp * 1000;
-            return true;
+          const json = await response.json();
+          this.accessToken = json.access_token;
+      
+          // Update the token expiration time
+          const payload = JSON.parse(atob(this.accessToken.split('.')[1]));
+          this.tokenExpiresAt = payload.exp * 1000;
+          return true;
         } else {
-            // Refresh token is invalid or expired
-            this.accessToken = null;
-            this.refreshToken = null;
-            this.tokenExpiresAt = null;
-            return false;
+          // Refresh token is invalid or expired
+          this.accessToken = null;
+          this.refreshToken = null;
+          this.tokenExpiresAt = null;
+          return false;
         }
     }
 
