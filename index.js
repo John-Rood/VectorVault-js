@@ -668,6 +668,79 @@ export default class VectorVault {
         }
     }
 
+    // Method to upload a PDF file to a vault
+    async uploadPdf(pdfFile, vault, options = {}) {
+        const url = `${this.baseUrl}/pdf_upload`;
+        
+        // Validate inputs
+        if (!pdfFile || !vault) {
+            throw new Error('PDF file and vault name are required');
+        }
+        
+        // Create form data
+        const formData = new FormData();
+        formData.append('pdf_file', pdfFile);
+        formData.append('vault_name', vault);
+        
+        // Add optional parameters
+        if (options.summarize !== undefined) {
+            formData.append('summarize', options.summarize.toString());
+        }
+        
+        if (options.splitSize) {
+            formData.append('split_size', options.splitSize.toString());
+        }
+        
+        // Make the authenticated request
+        const now = Date.now();
+        if (this.tokenExpiresAt - now < 60000) {
+            const refreshed = await this.refreshAccessToken();
+            if (!refreshed) {
+                throw new Error('Session expired. Please log in again.');
+            }
+        }
+        
+        // Send the request with proper headers but don't set Content-Type
+        // as FormData will set it automatically with the correct boundary
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.accessToken}`
+            },
+            body: formData
+        });
+        
+        // Handle response
+        if (response.ok) {
+            return response.json();
+        } else if (response.status === 401) {
+            // Try to refresh token and retry
+            const refreshed = await this.refreshAccessToken();
+            if (refreshed) {
+                const retryResponse = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${this.accessToken}`
+                    },
+                    body: formData
+                });
+                
+                if (retryResponse.ok) {
+                    return retryResponse.json();
+                } else {
+                    const error = await retryResponse.json();
+                    throw new Error(`Request failed: ${error.message || error.error}`);
+                }
+            } else {
+                throw new Error('Session expired. Please log in again.');
+            }
+        } else {
+            const error = await response.json();
+            throw new Error(`PDF upload failed: ${error.message || error.error}`);
+        }
+    }
+
+    
     // Method to log out the user
     logout() {
         this.accessToken = null;
