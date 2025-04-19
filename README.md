@@ -347,29 +347,40 @@ Make sure to replace `"Your query here"` with the actual text you want to send t
 
 - **Run Flow with Streaming Response**
 
-  ```javascript
-  const flowName = 'your_flow_name';
-  const message = 'Your message here';
-  const history = ''; // optional
+```javascript
+runFlow(                 // returns full response after completion
+runFlowStream(           // streams logs & messages
+    flowName,            // string – Flow identifier
+    message,             // string – user message
+    history = '',        // string – chat history (optional)
+    conversation_user_id = null, // any – used by multi‑user apps
+    session_id = null,   // any – thread identifier
+    invoke_method = null,// string – arbitrary label written to logs
+    internal_vars = null,// object – {varName: value} overrides flow‑internal vars
+    callbacks = {        // only used by runFlowStream
+        onLog: log => {},      // fires for every 'log' event
+        onMessage: chunk => {},// fires for every 'message' chunk
+        onError: err => {}     // fires on network / parsing errors
+    }
+)
+```
 
-  const callbacks = {
-    onLog: logData => {
-      console.log('Log:', logData);
-    },
-    onMessage: messageData => {
-      console.log('Message:', messageData);
-    },
-  };
+```javascript
+const flow = 'my_flow';
+const msg  = 'Hi, Flow!';
+const payload = { role: 'tester' };
+const cb = {
+  onLog:   log => console.log('[LOG]', log),
+  onMessage: m => process.stdout.write(m),
+  onError:  err => console.error(err)
+};
 
-  vectorVault
-    .runFlowStream(flowName, message, history, callbacks)
-    .then(result => {
-      console.log('Flow completed:', result);
-    })
-    .catch(error => {
-      console.error('Flow error:', error);
-    });
-  ```
+vectorVault
+  .runFlowStream(flow, msg, '', null, null, 'CLI', payload, cb)
+  .then(res => console.log('\nFlow done:', res))
+  .catch(err => console.error('Flow error:', err));
+```
+
 
 ## Error Handling
 

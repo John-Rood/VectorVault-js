@@ -550,7 +550,7 @@ export default class VectorVault {
     }
 
     // Method to run a flow without streaming response
-    async runFlow(flowName, message, history = '', conversation_user_id = null, session_id = null, callbacks = {}) {
+    async runFlow(flowName, message, history = '', conversation_user_id = null, session_id = null, invoke_method = null, internal_vars = null, callbacks = {}) {
         const url = `${this.baseUrl}/flow`;
 
         const data = {
@@ -560,6 +560,8 @@ export default class VectorVault {
             history,
             conversation_user_id: conversation_user_id,
             session_id: session_id, 
+            invoke_method: invoke_method, 
+            internal_vars: internal_vars, 
         };
 
         try {
@@ -594,7 +596,7 @@ export default class VectorVault {
     }
 
     // Method to run a flow with streaming response
-    async runFlowStream(flowName, message, history = '', conversation_user_id = null, session_id = null, callbacks = {}) {
+    async runFlowStream(flowName, message, history = '', conversation_user_id = null, session_id = null, invoke_method = null, internal_vars = null, callbacks = {}) {
         const url = `${this.baseUrl}/flow-stream`;
         
         const data = {
@@ -604,6 +606,8 @@ export default class VectorVault {
             history,
             conversation_user_id: conversation_user_id,
             session_id: session_id, 
+            invoke_method: invoke_method, 
+            internal_vars: internal_vars, 
         };
 
         const response = await this.makeAuthenticatedRequest(url, {
