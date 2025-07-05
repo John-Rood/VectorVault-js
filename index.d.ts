@@ -32,9 +32,9 @@ declare module 'vectorvault' {
 
     // Methods
     initializeDeployment(email: string, deploymentId: string): Promise<void>;
-    makeAuthenticatedRequest(url: string, options?: RequestInit): Promise<Response>;
+    makeAuthenticatedRequest(url: string, options?: RequestInit, maxRetries?: number): Promise<Response>;
     login(email: string, password: string): Promise<void>;
-    refreshAccessToken(): Promise<boolean>;
+    refreshAccessToken(maxRetries?: number): Promise<boolean>;
 
     getAccessToken(): string | null;
     getRefreshToken(): string | null;
@@ -63,21 +63,22 @@ declare module 'vectorvault' {
     fetch3DMap(vault: string, highlightId?: number | null): Promise<any>;
     getItems(vault: string, itemIds: number[]): Promise<any>;
     
-    // New PDF upload method
+    // PDF upload method
     uploadPdf(
       pdfFile: File, 
       vault: string, 
       options?: PDFUploadOptions
-    ): Promise<{
-      status: string;
-      message: string;
-      items_added?: number;
-    }>;
+    ): Promise<any>;
 
+    // Flow methods with updated signatures
     runFlow(
       flowName: string,
       message: string,
       history?: string,
+      conversation_user_id?: string | null,
+      session_id?: string | null,
+      invoke_method?: string | null,
+      internal_vars?: Record<string, any> | null,
       callbacks?: FlowCallbacks
     ): Promise<FlowResult>;
 
@@ -85,6 +86,10 @@ declare module 'vectorvault' {
       flowName: string,
       message: string,
       history?: string,
+      conversation_user_id?: string | null,
+      session_id?: string | null,
+      invoke_method?: string | null,
+      internal_vars?: Record<string, any> | null,
       callbacks?: FlowCallbacks
     ): Promise<FlowResult>;
 

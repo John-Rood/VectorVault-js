@@ -34,40 +34,73 @@ export default class VectorVault {
         }
     }
 
-    async makeAuthenticatedRequest(url, options = {}) {
-        const now = Date.now();
-        if (this.tokenExpiresAt - now < 60000) {
-            const refreshed = await this.refreshAccessToken();
-            if (!refreshed) {
+    // Resilient makeRequest
+    async makeAuthenticatedRequest(url, options = {}, maxRetries = 2) {
+        for (let attempt = 0; attempt < maxRetries + 1; attempt++) {
+          try {
+            // Check token expiration
+            const now = Date.now();
+            if (this.tokenExpiresAt - now < 60000) {
+              const refreshed = await this.refreshAccessToken();
+              if (!refreshed) {
                 throw new Error("Session expired. Please log in again.");
+              }
             }
-        }
-
-        options.headers = options.headers || {};
-        options.headers['Authorization'] = `Bearer ${this.accessToken}`;
-        options.headers['Content-Type'] = 'application/json';
-
-        const response = await fetch(url, options);
-
-        if (response.ok) {
-            return response;
-        } else if (response.status === 401) {
-            const refreshed = await this.refreshAccessToken();
-            if (refreshed) {
+            
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = `Bearer ${this.accessToken}`;
+            if (!options.headers['Content-Type'] && !(options.body instanceof FormData)) {
+              options.headers['Content-Type'] = 'application/json';
+            }
+            
+            const response = await fetch(url, options);
+            
+            // Handle 404 errors specifically
+            if (response.status === 404) {
+              console.warn(`404 error on attempt ${attempt+1} - refreshing token and retrying`);
+              await this.refreshAccessToken();
+              
+              if (attempt < maxRetries) {
+                const waitTime = Math.pow(2, attempt) * 1000;
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                continue;
+              } else {
+                throw new Error("Endpoint not found after multiple attempts.");
+              }
+            }
+            
+            if (response.ok) {
+              return response;
+            } else if (response.status === 401) {
+              const refreshed = await this.refreshAccessToken();
+              if (refreshed && attempt < maxRetries) {
                 options.headers['Authorization'] = `Bearer ${this.accessToken}`;
-                const retryResponse = await fetch(url, options);
-                if (retryResponse.ok) {
-                    return retryResponse;
-                } else {
-                    const error = await retryResponse.json();
-                    throw new Error(`Request failed: ${error.error}`);
-                }
-            } else {
+                // Wait before retry
+                const waitTime = Math.pow(2, attempt) * 1000;
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                continue;
+              } else {
                 throw new Error("Session expired. Please log in again.");
+              }
+            } else {
+              let errorMessage = "Request failed";
+              try {
+                const error = await response.json();
+                errorMessage = `${errorMessage}: ${error.error || error.message || response.statusText}`;
+              } catch (e) {
+                errorMessage = `${errorMessage}: ${response.statusText || response.status}`;
+              }
+              throw new Error(errorMessage);
             }
-        } else {
-            const error = await response.json();
-            throw new Error(`Request failed: ${error.error}`);
+          } catch (error) {
+            if (attempt === maxRetries) {
+              throw error; // Rethrow on last attempt
+            }
+            
+            // For network errors, retry with backoff
+            const waitTime = Math.pow(2, attempt) * 1000;
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          }
         }
     }
 
@@ -104,31 +137,69 @@ export default class VectorVault {
     }
 
     // Method to refresh the access token using the refresh token
-    async refreshAccessToken() {
+    // Improved refreshAccessToken method
+    async refreshAccessToken(maxRetries = 3) {
         const url = `${this.baseUrl}/refresh`;
-      
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${this.refreshToken}`,
-          },
-        });
-      
-        if (response.ok) {
-          const json = await response.json();
-          this.accessToken = json.access_token;
-      
-          // Update the token expiration time
-          const payload = JSON.parse(atob(this.accessToken.split('.')[1]));
-          this.tokenExpiresAt = payload.exp * 1000;
-          return true;
-        } else {
-          // Refresh token is invalid or expired
-          this.accessToken = null;
-          this.refreshToken = null;
-          this.tokenExpiresAt = null;
-          return false;
+        
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.refreshToken}`,
+            },
+            });
+            
+            // Handle 404 errors specifically
+            if (response.status === 404) {
+            console.warn(`404 error encountered on refresh attempt ${attempt+1} - token endpoint not found or token invalid`);
+            
+            // Wait with exponential backoff before retry
+            if (attempt < maxRetries - 1) {
+                const waitTime = Math.pow(2, attempt) * 1000; // exponential backoff in ms
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                continue;
+            }
+            }
+            
+            if (response.ok) {
+            const json = await response.json();
+            this.accessToken = json.access_token;
+            
+            // Update the token expiration time
+            const payload = JSON.parse(atob(this.accessToken.split('.')[1]));
+            this.tokenExpiresAt = payload.exp * 1000;
+            return true;
+            } else {
+            // For other errors, if not the last attempt, try again
+            if (attempt < maxRetries - 1) {
+                const waitTime = Math.pow(2, attempt) * 1000;
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+            } else {
+                // Last attempt failed
+                this.accessToken = null;
+                this.refreshToken = null;
+                this.tokenExpiresAt = null;
+                return false;
+            }
+            }
+        } catch (error) {
+            console.error(`Error during token refresh attempt ${attempt+1}:`, error);
+            
+            // For network errors, retry with backoff if not last attempt
+            if (attempt < maxRetries - 1) {
+            const waitTime = Math.pow(2, attempt) * 1000;
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            } else {
+            this.accessToken = null;
+            this.refreshToken = null;
+            this.tokenExpiresAt = null;
+            return false;
+            }
         }
+        }
+        
+        return false;
     }
 
 
