@@ -1,6 +1,6 @@
 {
   "name": "vectorvault",
-  "version": "1.5.7",
+  "version": "1.5.8",
   "description": "VectorVault API - JavaScript Client: Streamline your front-end development with the powerful combination of OpenAI's API and VectorVault's Cloud Vector Database. This JavaScript client provides seamless integration for building advanced RAG (Retrieve and Generate) applications. Whether you're working with JavaScript, HTML, or other web technologies, our API simplifies the process of fetching RAG responses through API POST requests. This package is the key to unlocking quick and efficient development for AI-powered web applications, ensuring a secure and robust connection to the VectorVault ecosystem. Start crafting exceptional RAG apps with minimal effort and maximum efficiency.",
   "type": "module",
   "main": "index.js",
