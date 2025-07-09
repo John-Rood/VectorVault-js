@@ -49,6 +49,7 @@ declare module 'vectorvault' {
     editItem(vault: string, itemId: number, newText: string): Promise<any>;
     getTotalItems(vault: string): Promise<any>;
     deleteVault(vault: string): Promise<any>;
+    createVault(vault: string): Promise<any>;
     deleteItems(vault: string, itemIds: number[]): Promise<any>;
     addCloud(params: Record<string, any>): Promise<any>;
     addSite(params: Record<string, any>): Promise<any>;

@@ -389,6 +389,22 @@ export default class VectorVault {
         return response.json();
     }
 
+    // Method to create a new vault
+    async createVault(vault) {
+        const url = `${this.baseUrl}/create_vault`;
+
+        const data = {
+            vault: vault
+        };
+
+        const response = await this.makeAuthenticatedRequest(url, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+
+        return response.json();
+    }
+
     // Method to delete specific items
     async deleteItems(vault, itemIds) {
         // itemIds is a list of integers. If you only have one item to delete, pass in a list with the single item id inside 

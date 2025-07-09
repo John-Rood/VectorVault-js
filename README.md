@@ -164,6 +164,16 @@ Make sure to replace `"Your query here"` with the actual text you want to send t
     .catch(error => console.error(error));
   ```
 
+- **Create Vault**
+
+  ```javascript
+  const vault = 'new_vault_name';
+  vectorVault
+    .createVault(vault)
+    .then(response => console.log(response))
+    .catch(error => console.error(error));
+  ```
+
 - **Delete Vault**
 
   ```javascript
