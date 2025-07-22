@@ -8,7 +8,7 @@ VectorVault API - JavaScript Client: Streamline your front-end development with 
 ### 1. Via NPM (for React/Node.js/bundled projects)
 
 ```bash
-npm install vectorvault --save
+npm install vectorvault
 ```
 
 ### 2. Via CDN (for HTML)
@@ -33,8 +33,8 @@ const vectorVault = new VectorVault();
 // Login with password
 await vectorVault.login('your_email@example.com', 'your_password');
 
-// OR Login with api
-await vectorVault.loginAPI('your_email@example.com', 'your_api_key'); 
+// OR initialize a deployment (token-based)
+await vectorVault.initializeDeployment('your_email@example.com', 'your_deployment_id');
 ```
 
 ## Basic Operations
@@ -83,6 +83,20 @@ vectorVault
   .addCloud(params)
   .then(response => console.log(response))
   .catch(error => console.error(error));
+  
+#### Add Website Content by URL
+
+```javascript
+const params = {
+  vault: 'your_vault_name',
+  site: 'https://example.com',
+  // ...other optional parameters
+};
+
+vectorVault
+  .addSite(params)
+  .then(response => console.log(response))
+  .catch(error => console.error(error));
 ```
 
 ## Streaming Chat Responses
@@ -123,7 +137,7 @@ The `params` object can include any of the following properties:
 - `n_context`: The number of context turns you want to receive.
 - `return_context`: A boolean to include the context in the response.
 - `smart_history_search`: A boolean to enable smart history searching.
-- `model`: The model you want to use, e.g., `"gpt-3.5-turbo"`.
+- `model`: The model you want to use, e.g., `"gpt-4o"`.
 - `include_context_meta`: A boolean to include metadata about the context.
 - `metatag`, `metatag_prefixes`, `metatag_suffixes`: Arrays for advanced context tagging.
 - `custom_prompt`: A custom prompt to be used instead of the default.
@@ -142,8 +156,8 @@ Make sure to replace `"Your query here"` with the actual text you want to send t
 
   ```javascript
   await vectorVault.login('your_email@example.com', 'your_password');
-  // OR 
-  await vectorVault.loginAPI('your_email@example.com', 'your_api_key');
+  // OR initialize a deployment
+  await vectorVault.initializeDeployment('your_email@example.com', 'your_deployment_id');
   ```
 
 
