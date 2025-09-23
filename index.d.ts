@@ -19,6 +19,20 @@ declare module 'vectorvault' {
     splitSize?: number;
   }
 
+  // Params for getSimilar supporting new backend contract
+  interface GetSimilarParams {
+    embeddings_model?: string | null;
+    vault?: string; // legacy single-vault
+    text: string;
+    num_items?: number;
+    include_distances?: boolean;
+    // New: cross‑vault selector. Accepts:
+    // - string: single vault name
+    // - string[]: list of vault names
+    // - Record<string, number>: map of vault name -> per‑vault minimum count
+    vaults?: string | string[] | Record<string, number> | null;
+  }
+
   export default class VectorVault {
     constructor(embeddingsModel?: string | null);
 
@@ -56,7 +70,7 @@ declare module 'vectorvault' {
     getVaults(searchVault?: string | null): Promise<any>;
     getAccountData(): Promise<any>;
     getDistance(vault: string, id1: number, id2: number): Promise<any>;
-    getSimilar(params: Record<string, any>): Promise<any>;
+    getSimilar(params: GetSimilarParams): Promise<any>;
     savePersonalityMessage(vault: string, personalityMessage: string): Promise<any>;
     saveCustomPrompt(vault: string, customPrompt: string): Promise<any>;
     fetchPersonalityMessage(vault: string): Promise<any>;

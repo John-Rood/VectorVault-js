@@ -240,33 +240,52 @@ Make sure to replace `"Your query here"` with the actual text you want to send t
 
 - **Get Distance Between Two Items**
 
-  ```javascript
-  const vault = 'your_vault_name';
-  const id1 = 1;
-  const id2 = 2;
+```javascript
+const vault = 'your_vault_name';
+const id1 = 1;
+const id2 = 2;
 
-  vectorVault
-    .getDistance(vault, id1, id2)
-    .then(distance => console.log(`Distance: ${distance}`))
-    .catch(error => console.error(error));
-  ```
+vectorVault
+  .getDistance(vault, id1, id2)
+  .then(distance => console.log(`Distance: ${distance}`))
+  .catch(error => console.error(error));
+```
 
 - **Get Similar Items**
 
-  ```javascript
-  const params = {
-    vault: 'your_vault_name',
-    text: 'Sample text to find similarities',
-    num_items: 4,
-    include_distances: true,
-    // ...other optional parameters
-  };
+```javascript
+const params = {
+  // Option A (single-vault):
+  vault: 'your_vault_name',
 
-  vectorVault
-    .getSimilar(params)
-    .then(similarItems => console.log(similarItems))
-    .catch(error => console.error(error));
-  ```
+  // Option B (new cross‑vault):
+  // vaults: 'vaultA',
+  // vaults: ['vaultA', 'vaultB'],
+  // vaults: { vaultA: 3, vaultB: 1 }, // per‑vault minimum returns
+
+  text: 'Sample text to find similarities',
+  num_items: 4,
+  include_distances: true,
+};
+
+vectorVault
+  .getSimilar(params)
+  .then(similar => console.log(similar))
+  .catch(err => console.error(err));
+```
+
+- `vaults` behavior (cross‑vault search):
+  - **string**: treats as a single target vault and returns top‑`num_items` from that vault (with distances).
+  - **string[]**: searches each vault independently, merges all results, globally sorts by distance, returns the top‑`num_items` overall.
+  - **Record<string, number> (dict)**: enforces a per‑vault minimum number of results.
+    - Let `total_min = sum(minima.values())`.
+    - If `total_min > num_items`, the backend increases `num_items` to `total_min`.
+    - If `num_items <= total_min`, it fetches just enough per vault to satisfy each minimum.
+    - If `num_items > total_min`, it fetches extra from each vault to gather leftovers, then globally fills the remaining slots with the best overall distances.
+    - Final results are globally sorted by distance and truncated to `num_items`.
+- `include_distances`:
+  - Cross‑vault responses always include a `distance` field internally; when `include_distances` is false, the server strips `distance` before returning.
+  - Single‑vault legacy mode (`vault`) honors `include_distances` according to server behavior.
 
 ### Account and Vault Data
 

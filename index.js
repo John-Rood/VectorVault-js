@@ -525,6 +525,7 @@ export default class VectorVault {
             text: '',
             num_items: 4,
             include_distances: false,
+            vaults: null,
             ...params
         };
 
