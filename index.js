@@ -470,16 +470,11 @@ export default class VectorVault {
     }
 
     // Method to get list of vaults
-    async getVaults(searchVault = null) {
-        const url = `${this.baseUrl}/get_vaults`;
-
-        const data = {
-            search_vault: searchVault
-        };
+    async getVaults() {
+        const url = `${this.vectorUrl}/vaults-list`;
 
         const response = await this.makeAuthenticatedRequest(url, {
-            method: 'POST',
-            body: JSON.stringify(data)
+            method: 'GET'
         });
 
         return response.json();
@@ -487,11 +482,10 @@ export default class VectorVault {
 
     // Method to get account data
     async getAccountData() {
-        const url = `${this.baseUrl}/get_vault_data`;
+        const url = `${this.vectorUrl}/user-vault-data`;
 
         const response = await this.makeAuthenticatedRequest(url, {
-            method: 'POST',
-            body: JSON.stringify({})
+            method: 'GET'
         });
 
         const res = await response.json();
