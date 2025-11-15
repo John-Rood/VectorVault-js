@@ -5,6 +5,7 @@ export default class VectorVault {
         this.refreshToken = null;
         this.tokenExpiresAt = null;
         this.baseUrl = 'https://api.vectorvault.io'
+        this.vectorUrl = 'https://vectors.vectorvault.io'
         this.deploymentId = null;
     }
 
@@ -539,7 +540,7 @@ export default class VectorVault {
 
     // Method to save personality message
     async savePersonalityMessage(vault, personalityMessage) {
-        const url = `${this.baseUrl}/save_personality_message`;
+        const url = `${this.vectorUrl}/save_personality_message`;
 
         const data = {
             vault: vault,
@@ -555,12 +556,13 @@ export default class VectorVault {
     }
 
     // Method to save custom prompt
-    async saveCustomPrompt(vault, customPrompt) {
-        const url = `${this.baseUrl}/save_custom_prompt`;
+    async saveCustomPrompt(vault, customPrompt, context = true) {
+        const url = `${this.vectorUrl}/save_custom_prompt`;
 
         const data = {
             vault: vault,
-            prompt: customPrompt
+            prompt: customPrompt,
+            context: context
         };
 
         const response = await this.makeAuthenticatedRequest(url, {
@@ -573,7 +575,7 @@ export default class VectorVault {
 
     // Method to fetch personality message
     async fetchPersonalityMessage(vault) {
-        const url = `${this.baseUrl}/fetch_personality_message`;
+        const url = `${this.vectorUrl}/fetch_personality_message`;
 
         const data = {
             vault: vault
@@ -588,11 +590,12 @@ export default class VectorVault {
     }
 
     // Method to fetch custom prompt
-    async fetchCustomPrompt(vault) {
-        const url = `${this.baseUrl}/fetch_custom_prompt`;
+    async fetchCustomPrompt(vault, context = true) {
+        const url = `${this.vectorUrl}/fetch_custom_prompt`;
 
         const data = {
-            vault: vault
+            vault: vault,
+            context: context
         };
 
         const response = await this.makeAuthenticatedRequest(url, {
