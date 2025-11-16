@@ -472,12 +472,11 @@ export default class VectorVault {
     // Method to get list of vaults
     async getVaults() {
         const url = `${this.vectorUrl}/vaults-list`;
-
         const response = await this.makeAuthenticatedRequest(url, {
             method: 'GET'
         });
-
-        return response.json();
+        const data = await response.json();
+        return data.vaults; 
     }
 
     // Method to get account data
