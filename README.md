@@ -20,6 +20,20 @@ npm install vectorvault
 <br />
 <br />
 
+## 📚 Documentation
+
+**📑 [Documentation Index](DOCUMENTATION_INDEX.md)** - Complete guide to all documentation
+
+**New to VectorVault?** Start here:
+- **[Quick Reference](QUICK_REFERENCE.md)** - Fast lookup for common operations
+- **[API Documentation](API_DOCUMENTATION.md)** - Complete API reference
+
+**Advanced Features:**
+- **[VectorFlow Documentation](vectorflow_docs.md)** - Build complex AI agent workflows
+- **[VectorFlow Logging Reference](vectorflow_logging.md)** - Flow execution logging details
+
+<br />
+
 ## Usage
 
 To use VectorVault, you need to import it, instantiate it, and log in with your user credentials:
@@ -433,6 +447,15 @@ Most methods return promises and should be handled with `.then().catch()` or `as
 
 - Replace placeholder values (like `'your_email@example.com'`, `'your_password'`, `'your_vault_name'`, etc.) with your actual account and vault information.
 - If you don't already have a VectorVault account, sign up at [vectorvault.io](https://vectorvault.io).
+
+## Documentation
+
+This package includes comprehensive documentation. See **[Documentation Index](DOCUMENTATION_INDEX.md)** for complete navigation guide.
+
+- **[Quick Reference](QUICK_REFERENCE.md)** - Quick lookup guide for common methods and patterns
+- **[API Documentation](API_DOCUMENTATION.md)** - Complete API reference with detailed parameters and examples
+- **[VectorFlow Documentation](vectorflow_docs.md)** - Guide to building AI agent flows
+- **[VectorFlow Logging Reference](vectorflow_logging.md)** - Detailed logging structure for flows
 
 ## Conclusion
 

@@ -533,7 +533,7 @@ export default class VectorVault {
 
     // Method to save personality message
     async savePersonalityMessage(vault, personalityMessage) {
-        const url = `${this.vectorUrl}/save_personality_message`;
+        const url = `${this.baseUrl}/save_personality_message`;
 
         const data = {
             vault: vault,
@@ -550,7 +550,7 @@ export default class VectorVault {
 
     // Method to save custom prompt
     async saveCustomPrompt(vault, customPrompt, context = true) {
-        const url = `${this.vectorUrl}/save_custom_prompt`;
+        const url = `${this.baseUrl}/save_custom_prompt`;
 
         const data = {
             vault: vault,
@@ -568,7 +568,7 @@ export default class VectorVault {
 
     // Method to fetch personality message
     async fetchPersonalityMessage(vault) {
-        const url = `${this.vectorUrl}/fetch_personality_message`;
+        const url = `${this.baseUrl}/fetch_personality_message`;
 
         const data = {
             vault: vault
@@ -584,7 +584,7 @@ export default class VectorVault {
 
     // Method to fetch custom prompt
     async fetchCustomPrompt(vault, context = true) {
-        const url = `${this.vectorUrl}/fetch_custom_prompt`;
+        const url = `${this.baseUrl}/fetch_custom_prompt`;
 
         const data = {
             vault: vault,
