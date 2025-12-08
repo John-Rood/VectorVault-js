@@ -194,8 +194,6 @@ const prompt = await vv.fetchCustomPrompt('my_vault');
 
 ## Flow Execution
 
-> See `vectorflow_docs.md` for comprehensive flow documentation
-
 ### runFlow() - Get complete response
 ```javascript
 const result = await vv.runFlow(
@@ -382,7 +380,6 @@ interface PDFUploadOptions {
 ## More Resources
 
 - **Full API Documentation**: `API_DOCUMENTATION.md`
-- **VectorFlow Guide**: `vectorflow_docs.md`
 - **Logging Reference**: `vectorflow_logging.md`
 - **GitHub**: https://github.com/John-Rood/vectorvault-js
 - **Website**: https://vectorvault.io

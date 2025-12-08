@@ -824,7 +824,7 @@ console.log(result.custom_prompt);
 
 Flows are complex AI workflows that can include multiple steps, conditional logic, and integrations.
 
-> **📖 For comprehensive information about building flows**, including all available node types, development patterns, and deployment options, see the **VectorFlow Documentation** (`vectorflow_docs.md`). For detailed logging structure of flow executions, see **VectorFlow Logging Reference** (`vectorflow_logging.md`).
+> **📖 For detailed logging structure of flow executions**, see **VectorFlow Logging Reference** (`vectorflow_logging.md`).
 
 ### runFlow()
 
@@ -1288,7 +1288,6 @@ main();
 ## Additional Resources
 
 ### Documentation
-- **VectorFlow Documentation** (`vectorflow_docs.md`) - Comprehensive guide to building and deploying AI agent flows
 - **VectorFlow Logging Reference** (`vectorflow_logging.md`) - Detailed logging structure for all flow node types
 
 ### Links

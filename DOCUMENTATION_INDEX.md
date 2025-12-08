@@ -33,15 +33,7 @@ Welcome to the VectorVault JavaScript client documentation. This index will help
 
 ### For Building AI Workflows
 
-4. **[vectorflow_docs.md](vectorflow_docs.md)** - VectorFlow platform guide
-   - Introduction to VectorFlow
-   - Visual flow builder
-   - All node types explained
-   - Development patterns
-   - Deployment options
-   - Security considerations
-
-5. **[vectorflow_logging.md](vectorflow_logging.md)** - Flow execution logging
+4. **[vectorflow_logging.md](vectorflow_logging.md)** - Flow execution logging
    - Logging structure for all node types
    - System log formats
    - Debugging flows
@@ -79,7 +71,6 @@ Welcome to the VectorVault JavaScript client documentation. This index will help
 ### Flow Execution
 - **Getting Started**: [README.md](README.md#flow-execution-with-streaming)
 - **Quick Lookup**: [QUICK_REFERENCE.md](QUICK_REFERENCE.md#flow-execution)
-- **Building Flows**: [vectorflow_docs.md](vectorflow_docs.md)
 - **Detailed Reference**: [API_DOCUMENTATION.md](API_DOCUMENTATION.md#flow-execution-methods)
 - **Logging Details**: [vectorflow_logging.md](vectorflow_logging.md)
 
@@ -114,11 +105,10 @@ Welcome to the VectorVault JavaScript client documentation. This index will help
 4. Full details: [API_DOCUMENTATION.md - Data Management](API_DOCUMENTATION.md#data-management-methods)
 
 ### I want to create AI agent workflows
-1. Start with [vectorflow_docs.md](vectorflow_docs.md)
-2. Learn all node types: [vectorflow_docs.md - Node Types Reference](vectorflow_docs.md#node-types-reference)
-3. Implement in code: [QUICK_REFERENCE.md - Flow Execution](QUICK_REFERENCE.md#flow-execution)
-4. Full API details: [API_DOCUMENTATION.md - Flow Execution Methods](API_DOCUMENTATION.md#flow-execution-methods)
-5. Debug with logs: [vectorflow_logging.md](vectorflow_logging.md)
+1. Learn about flows: [README.md - Flow Execution](README.md#flow-execution-with-streaming)
+2. Implement in code: [QUICK_REFERENCE.md - Flow Execution](QUICK_REFERENCE.md#flow-execution)
+3. Full API details: [API_DOCUMENTATION.md - Flow Execution Methods](API_DOCUMENTATION.md#flow-execution-methods)
+4. Debug with logs: [vectorflow_logging.md](vectorflow_logging.md)
 
 ### I want to search across multiple vaults
 1. See examples: [README.md - Get Similar Items](README.md#get-similar-items)
@@ -157,12 +147,6 @@ Welcome to the VectorVault JavaScript client documentation. This index will help
 - **Style**: Detailed specifications
 - **Depth**: Comprehensive, all parameters documented
 - **Best for**: Understanding all options, type information
-
-### vectorflow_docs.md
-- **Purpose**: VectorFlow platform guide
-- **Style**: Conceptual explanation with examples
-- **Depth**: Deep dive into flows
-- **Best for**: Building complex AI workflows
 
 ### vectorflow_logging.md
 - **Purpose**: Technical logging reference
@@ -215,7 +199,6 @@ If you find errors or want to improve the documentation:
 | Upload a PDF | [API_DOCUMENTATION.md - uploadPdf()](API_DOCUMENTATION.md#uploadpdf) |
 | Execute a flow | [QUICK_REFERENCE.md - Flow Execution](QUICK_REFERENCE.md#flow-execution) |
 | Handle errors | [QUICK_REFERENCE.md - Error Handling](QUICK_REFERENCE.md#error-handling) |
-| Build a flow | [vectorflow_docs.md](vectorflow_docs.md) |
 | Debug flow logs | [vectorflow_logging.md](vectorflow_logging.md) |
 
 ---
