@@ -1,14 +1,27 @@
 {
   "name": "vectorvault",
-  "version": "1.6.6",
-  "description": "VectorVault API - JavaScript Client: Streamline your front-end development with the powerful combination of OpenAI's API and VectorVault's Cloud Vector Database. This JavaScript client provides seamless integration for building advanced RAG (Retrieve and Generate) applications. Whether you're working with JavaScript, HTML, or other web technologies, our API simplifies the process of fetching RAG responses through API POST requests. This package is the key to unlocking quick and efficient development for AI-powered web applications, ensuring a secure and robust connection to the VectorVault ecosystem. Start crafting exceptional RAG apps with minimal effort and maximum efficiency.",
+  "version": "2.0.0",
+  "description": "Vector database for AI applications - local FAISS-powered vector search in TypeScript",
   "type": "module",
-  "main": "index.js",
-  "types": "index.d.ts",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
   "scripts": {
-    "build": "npx webpack --config webpack.config.cjs",
-    "prepublishOnly": "npm install && npm run build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "test": "vitest run --pool=forks --poolOptions.forks.singleFork=true",
+    "test:watch": "vitest --pool=forks --poolOptions.forks.singleFork=true",
+    "test:local": "vitest run tests/local.test.ts --pool=forks --poolOptions.forks.singleFork=true",
+    "test:cloud": "vitest run tests/cloud.test.ts",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -16,12 +29,14 @@
   },
   "keywords": [
     "vectorvault",
-    "ai agents",
-    "AI",
-    "RAG",
-    "chatgpt",
     "vector",
-    "databases"
+    "database",
+    "faiss",
+    "embeddings",
+    "RAG",
+    "AI",
+    "local",
+    "typescript"
   ],
   "author": "John Rood",
   "license": "MIT",
@@ -30,14 +45,16 @@
   },
   "homepage": "https://github.com/John-Rood/vectorvault-js#readme",
   "dependencies": {
-    "crypto-js": "^4.2.0"
+    "faiss-node": "^0.5.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.26.0",
-    "@babel/preset-env": "^7.26.0",
-    "babel-loader": "^9.2.1",
-    "babelify": "^10.0.0",
-    "webpack": "^5.95.0",
-    "webpack-cli": "^5.1.4"
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

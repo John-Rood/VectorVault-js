@@ -1,4 +1,21 @@
-node_modules/
+# Source (we ship dist/)
 src/
-webpack.config.cjs
-*.test.js
+
+# Tests
+tests/
+*.test.ts
+vitest.config.ts
+
+# Config
+tsconfig.json
+.gitattributes
+
+# Dev files
+.git/
+.github/
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
