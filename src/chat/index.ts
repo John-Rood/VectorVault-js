@@ -8,6 +8,8 @@
 export { LLMClient } from './client.js';
 export { OpenAIChatClient } from './openai.js';
 export { AnthropicChatClient } from './anthropic.js';
+export { GeminiChatClient } from './gemini.js';
+export { GrokChatClient } from './grok.js';
 
 export type {
   ChatOptions,
