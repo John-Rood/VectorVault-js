@@ -80,13 +80,14 @@ export type {
 } from './chat/types.js';
 
 // Chat clients (for advanced usage)
-export { LLMClient, OpenAIChatClient } from './chat/index.js';
+export { LLMClient, OpenAIChatClient, AnthropicChatClient } from './chat/index.js';
 
 // Components (for advanced usage)
 export { FAISSIndex } from './vectors/faiss.js';
 export { LocalStorageManager } from './storage/local.js';
 export { CloudStorageManager } from './storage/cloud.js';
 export { OpenAIEmbeddings } from './embeddings/openai.js';
+export { GeminiEmbeddings } from './embeddings/gemini.js';
 
 // Utilities
 export { RateLimiter, sleep } from './utils/index.js';

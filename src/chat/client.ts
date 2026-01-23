@@ -111,4 +111,46 @@ ${context}`;
   protected getTimeout(options?: LLMRequestOptions): number {
     return options?.timeout ?? this.defaultTimeout;
   }
+
+  /**
+   * Simple LLM call without context
+   */
+  async llm(text: string, history?: string, options?: LLMRequestOptions & { customPrompt?: string }): Promise<string> {
+    let messages: ChatMessage[];
+
+    if (options?.customPrompt) {
+      const prompt = options.customPrompt.replace('{content}', text);
+      messages = [{ role: 'user', content: prompt }];
+    } else {
+      messages = this.buildSimpleMessages(text, history);
+    }
+
+    return this.chat(messages, options);
+  }
+
+  /**
+   * LLM call with context (RAG)
+   */
+  async llmWithContext(
+    text: string,
+    context: string,
+    history?: string,
+    options?: LLMRequestOptions & { customPrompt?: string }
+  ): Promise<string> {
+    const messages = this.buildContextMessages(text, context, history, options?.customPrompt);
+    return this.chat(messages, options);
+  }
+
+  /**
+   * Stream LLM call with context (RAG)
+   */
+  async *llmWithContextStream(
+    text: string,
+    context: string,
+    history?: string,
+    options?: LLMRequestOptions & { customPrompt?: string }
+  ): AsyncGenerator<string, void, unknown> {
+    const messages = this.buildContextMessages(text, context, history, options?.customPrompt);
+    yield* this.chatStream(messages, options);
+  }
 }

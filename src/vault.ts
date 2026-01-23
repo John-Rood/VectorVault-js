@@ -20,8 +20,28 @@ import { FAISSIndex } from './vectors/faiss.js';
 import { LocalStorageManager } from './storage/local.js';
 import { CloudStorageManager } from './storage/cloud.js';
 import { OpenAIEmbeddings } from './embeddings/openai.js';
+import { GeminiEmbeddings } from './embeddings/gemini.js';
 import { OpenAIChatClient } from './chat/openai.js';
+import { AnthropicChatClient } from './chat/anthropic.js';
+import { LLMClient } from './chat/client.js';
 import type { ChatOptions, ChatResponse, ChatResponseWithContext, FlowOptions } from './chat/types.js';
+
+/** Gemini embedding models */
+const GEMINI_EMBEDDING_MODELS = [
+  'text-embedding-004',
+  'text-embedding-005',
+  'embedding-001'
+];
+
+/** Check if model is a Gemini embedding model */
+function isGeminiEmbeddingModel(model: string): boolean {
+  return GEMINI_EMBEDDING_MODELS.some(m => model.includes(m));
+}
+
+/** Check if model is an Anthropic chat model */
+function isAnthropicModel(model: string): boolean {
+  return model.startsWith('claude-');
+}
 
 export class Vault {
   private config: VaultConfig;
@@ -29,7 +49,7 @@ export class Vault {
   private cloudStorage: CloudStorageManager | null = null;
   private index: FAISSIndex | null = null;
   private embeddings: EmbeddingsProvider | null = null;
-  private chatClient: OpenAIChatClient | null = null;
+  private chatClient: LLMClient | null = null;
   private mapping: Record<string, string> = {};
   private pendingItems: PendingItem[] = [];
   private nextId: number = 0;
@@ -54,23 +74,37 @@ export class Vault {
 
     if (this.isLocal) {
       // Local mode
-      if (!this.config.openaiKey) {
-        throw new Error('OpenAI API key is required (openaiKey)');
+      this.storage = new LocalStorageManager(this.config.vault, this.config.localDir);
+
+      // Auto-select embeddings provider based on model
+      const embeddingsModel = this.config.embeddingsModel ?? 'text-embedding-3-small';
+      
+      if (isGeminiEmbeddingModel(embeddingsModel)) {
+        // Gemini embeddings
+        if (!this.config.geminiKey) {
+          throw new Error('Gemini API key required for Gemini embedding models (geminiKey)');
+        }
+        // Adjust dimensions for Gemini (768 vs OpenAI's 1536/3072)
+        this.config.dims = 768;
+        this.index = new FAISSIndex(768);
+        this.embeddings = new GeminiEmbeddings(
+          this.config.geminiKey,
+          embeddingsModel
+        );
+      } else {
+        // OpenAI embeddings (default)
+        if (!this.config.openaiKey) {
+          throw new Error('OpenAI API key is required (openaiKey)');
+        }
+        this.index = new FAISSIndex(this.config.dims ?? 1536);
+        this.embeddings = new OpenAIEmbeddings(
+          this.config.openaiKey,
+          embeddingsModel
+        );
       }
 
-      this.storage = new LocalStorageManager(this.config.vault, this.config.localDir);
-      this.index = new FAISSIndex(this.config.dims);
-      this.embeddings = new OpenAIEmbeddings(
-        this.config.openaiKey,
-        this.config.embeddingsModel
-      );
-
-      // Initialize chat client for local mode
-      this.chatClient = new OpenAIChatClient({
-        apiKey: this.config.openaiKey,
-        defaultModel: this.config.chatModel ?? 'gpt-4o-mini',
-        defaultTemperature: this.config.chatTemperature ?? 0
-      });
+      // Auto-select chat client based on model
+      this.initializeChatClient();
     } else {
       // Cloud mode
       if (!this.config.user || !this.config.apiKey) {
@@ -84,23 +118,57 @@ export class Vault {
         this.config.embeddingsModel
       );
 
-      // OpenAI key is optional in cloud mode (cloud handles embeddings)
-      if (this.config.openaiKey) {
+      // Initialize embeddings if API key provided
+      const embeddingsModel = this.config.embeddingsModel ?? 'text-embedding-3-small';
+      
+      if (isGeminiEmbeddingModel(embeddingsModel) && this.config.geminiKey) {
+        this.embeddings = new GeminiEmbeddings(
+          this.config.geminiKey,
+          embeddingsModel
+        );
+      } else if (this.config.openaiKey) {
         this.embeddings = new OpenAIEmbeddings(
           this.config.openaiKey,
-          this.config.embeddingsModel
+          embeddingsModel
         );
-
-        // Initialize chat client for cloud mode with local LLM calls
-        this.chatClient = new OpenAIChatClient({
-          apiKey: this.config.openaiKey,
-          defaultModel: this.config.chatModel ?? 'gpt-4o-mini',
-          defaultTemperature: this.config.chatTemperature ?? 0
-        });
       }
+
+      // Initialize chat client if possible
+      this.initializeChatClient();
     }
 
     this.log(`Vault "${this.config.vault}" initialized (${this.isLocal ? 'local' : 'cloud'} mode)`);
+  }
+
+  /**
+   * Initialize the chat client based on model and available API keys
+   * Auto-selects Anthropic for claude-* models, OpenAI otherwise
+   */
+  private initializeChatClient(): void {
+    const chatModel = this.config.chatModel ?? 'gpt-4o-mini';
+    const temperature = this.config.chatTemperature ?? 0;
+
+    if (isAnthropicModel(chatModel)) {
+      // Use Anthropic for Claude models
+      if (this.config.anthropicKey) {
+        this.chatClient = new AnthropicChatClient({
+          apiKey: this.config.anthropicKey,
+          defaultModel: chatModel,
+          defaultTemperature: temperature
+        });
+        this.log(`Chat client: Anthropic (${chatModel})`);
+      } else {
+        this.log('Warning: Claude model specified but no anthropicKey provided');
+      }
+    } else if (this.config.openaiKey) {
+      // Use OpenAI for other models
+      this.chatClient = new OpenAIChatClient({
+        apiKey: this.config.openaiKey,
+        defaultModel: chatModel,
+        defaultTemperature: temperature
+      });
+      this.log(`Chat client: OpenAI (${chatModel})`);
+    }
   }
 
   private log(message: string): void {

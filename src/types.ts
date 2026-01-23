@@ -11,19 +11,21 @@ export interface VaultConfig {
   apiKey?: string;
   /** OpenAI API key for embeddings and chat */
   openaiKey?: string;
-  /** Anthropic API key for chat (optional) */
+  /** Anthropic API key for chat (optional, auto-selected for claude-* models) */
   anthropicKey?: string;
+  /** Gemini API key for embeddings (optional, auto-selected for text-embedding-004/005 models) */
+  geminiKey?: string;
   /** Use local filesystem storage instead of cloud */
   local?: boolean;
   /** Base directory for local storage (default: ~/.vectorvault) */
   localDir?: string;
   /** Enable verbose logging */
   verbose?: boolean;
-  /** Embedding dimensions (default: 1536 for text-embedding-3-small) */
+  /** Embedding dimensions (default: 1536 for text-embedding-3-small, 768 for Gemini) */
   dims?: number;
-  /** Embeddings model to use */
+  /** Embeddings model to use (e.g., 'text-embedding-3-large', 'text-embedding-004') */
   embeddingsModel?: string;
-  /** Default chat model (default: 'gpt-4o-mini') */
+  /** Default chat model (default: 'gpt-4o-mini', use 'claude-*' for Anthropic) */
   chatModel?: string;
   /** Default temperature for chat (default: 0) */
   chatTemperature?: number;

@@ -7,6 +7,7 @@
 
 export { LLMClient } from './client.js';
 export { OpenAIChatClient } from './openai.js';
+export { AnthropicChatClient } from './anthropic.js';
 
 export type {
   ChatOptions,
