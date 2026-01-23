@@ -20,7 +20,7 @@ import { LocalStorageManager } from './storage/local.js';
 import { CloudStorageManager } from './storage/cloud.js';
 import { OpenAIEmbeddings } from './embeddings/openai.js';
 import { OpenAIChatClient } from './chat/openai.js';
-import type { ChatOptions, ChatResponse, ChatResponseWithContext } from './chat/types.js';
+import type { ChatOptions, ChatResponse, ChatResponseWithContext, FlowOptions } from './chat/types.js';
 
 export class Vault {
   private config: VaultConfig;
@@ -825,6 +825,86 @@ export class Vault {
     }
 
     return fullResponse;
+  }
+
+  // ==================== Cloud Flows ====================
+
+  /**
+   * Execute a cloud flow and return the full response
+   * 
+   * Cloud flows are pre-configured AI workflows in VectorVault Cloud.
+   * This method is only available in cloud mode.
+   * 
+   * @example Basic flow execution
+   * ```typescript
+   * const response = await vault.runFlow('my-assistant', 'Hello!');
+   * console.log(response);
+   * ```
+   * 
+   * @example With options
+   * ```typescript
+   * const response = await vault.runFlow('my-assistant', 'Tell me more', {
+   *   history: 'User: Hi\nAssistant: Hello! How can I help?',
+   *   internalVars: { userId: '123' }
+   * });
+   * ```
+   * 
+   * @param flowName - Name of the flow to execute
+   * @param message - Message to send to the flow
+   * @param options - Additional options (history, invokeMethod, internalVars, imageUrl)
+   * @returns Full response from the flow execution
+   * @throws Error if called in local mode
+   */
+  async runFlow(flowName: string, message: string, options?: FlowOptions): Promise<string> {
+    if (this.isLocal) {
+      throw new Error(
+        'Cloud flows require cloud mode. ' +
+        'Use cloud mode or call LLM directly with getChat().'
+      );
+    }
+
+    return this.cloudStorage!.runFlow(flowName, message, options);
+  }
+
+  /**
+   * Execute a cloud flow and stream the response
+   * 
+   * Cloud flows are pre-configured AI workflows in VectorVault Cloud.
+   * This method is only available in cloud mode.
+   * 
+   * @example Streaming flow
+   * ```typescript
+   * for await (const token of vault.streamFlow('my-assistant', 'Hello!')) {
+   *   process.stdout.write(token);
+   * }
+   * ```
+   * 
+   * @example With history
+   * ```typescript
+   * let response = '';
+   * for await (const token of vault.streamFlow('my-assistant', 'Continue', {
+   *   history: previousConversation
+   * })) {
+   *   response += token;
+   *   process.stdout.write(token);
+   * }
+   * ```
+   * 
+   * @param flowName - Name of the flow to execute
+   * @param message - Message to send to the flow
+   * @param options - Additional options (history, invokeMethod, internalVars, imageUrl)
+   * @yields Stream tokens from the flow execution
+   * @throws Error if called in local mode
+   */
+  async *streamFlow(flowName: string, message: string, options?: FlowOptions): AsyncGenerator<string, void, unknown> {
+    if (this.isLocal) {
+      throw new Error(
+        'Cloud flows require cloud mode. ' +
+        'Use cloud mode or call LLM directly with getChatStream().'
+      );
+    }
+
+    yield* this.cloudStorage!.streamFlow(flowName, message, options);
   }
 
   // ==================== Utilities ====================

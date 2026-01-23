@@ -6,6 +6,7 @@
  */
 
 import type { StorageManager, ItemMetadata } from '../types.js';
+import type { FlowOptions } from '../chat/types.js';
 
 interface AuthResponse {
   access_token: string;
@@ -523,6 +524,159 @@ export class CloudStorageManager implements StorageManager {
     const data = await response.json() as { response?: string } | string;
     if (typeof data === 'string') return data;
     return data.response ?? '';
+  }
+
+  // ==================== Flow Operations ====================
+
+  /**
+   * Execute a cloud flow and return the full response
+   * 
+   * @param flowName - Name of the flow to execute
+   * @param message - Message to send to the flow
+   * @param options - Additional options (history, invokeMethod, internalVars, imageUrl)
+   * @returns Full response from the flow execution
+   */
+  async runFlow(flowName: string, message: string, options?: FlowOptions): Promise<string> {
+    const url = `${this.baseUrl}/flow`;
+    
+    const body: Record<string, unknown> = {
+      flow_id: flowName,
+      message,
+      history: options?.history ?? '',
+    };
+
+    // Add optional parameters if provided
+    if (options?.invokeMethod !== undefined) {
+      body.invoke_method = options.invokeMethod;
+    }
+    if (options?.internalVars !== undefined) {
+      body.internal_vars = options.internalVars;
+    }
+    if (options?.imageUrl !== undefined) {
+      body.image_url = options.imageUrl;
+    }
+
+    // Pass through any additional options (kwargs equivalent)
+    for (const [key, value] of Object.entries(options ?? {})) {
+      if (!['history', 'invokeMethod', 'internalVars', 'imageUrl'].includes(key)) {
+        body[key] = value;
+      }
+    }
+
+    const response = await this.makeAuthenticatedRequest(url, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+
+    const data = await response.json() as { response?: string } | string;
+    if (typeof data === 'string') return data;
+    return data.response ?? '';
+  }
+
+  /**
+   * Execute a cloud flow and stream the response
+   * 
+   * @param flowName - Name of the flow to execute
+   * @param message - Message to send to the flow
+   * @param options - Additional options (history, invokeMethod, internalVars, imageUrl)
+   * @yields Stream tokens from the flow execution
+   */
+  async *streamFlow(flowName: string, message: string, options?: FlowOptions): AsyncGenerator<string, void, unknown> {
+    const url = `${this.baseUrl}/flow-stream`;
+    
+    const body: Record<string, unknown> = {
+      flow_id: flowName,
+      message,
+      history: options?.history ?? '',
+    };
+
+    // Add optional parameters if provided
+    if (options?.invokeMethod !== undefined) {
+      body.invoke_method = options.invokeMethod;
+    }
+    if (options?.internalVars !== undefined) {
+      body.internal_vars = options.internalVars;
+    }
+    if (options?.imageUrl !== undefined) {
+      body.image_url = options.imageUrl;
+    }
+
+    // Pass through any additional options
+    for (const [key, value] of Object.entries(options ?? {})) {
+      if (!['history', 'invokeMethod', 'internalVars', 'imageUrl'].includes(key)) {
+        body[key] = value;
+      }
+    }
+
+    await this.ensureAuthenticated();
+
+    // Check if token needs refresh
+    if (Date.now() > this.tokenExpiresAt - 60000) {
+      const refreshed = await this.refreshAccessToken();
+      if (!refreshed) {
+        await this.authenticate();
+      }
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({})) as ErrorResponse;
+      throw new Error(`Flow stream request failed: ${error.error ?? error.message ?? response.statusText}`);
+    }
+
+    if (!response.body) {
+      throw new Error('No response body for streaming');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        
+        // Process SSE events (data: ...\n\n format)
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? ''; // Keep incomplete line in buffer
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6);
+            if (jsonStr.trim()) {
+              try {
+                const data = JSON.parse(jsonStr) as { data?: string };
+                if (data.data) {
+                  if (data.data === '!END') {
+                    return;
+                  }
+                  yield data.data;
+                }
+              } catch {
+                // Not valid JSON, yield as raw token
+                yield jsonStr;
+              }
+            }
+          } else if (line.startsWith('event: done')) {
+            return;
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
   }
 
   // ==================== Accessors ====================

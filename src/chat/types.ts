@@ -92,3 +92,19 @@ export interface StreamChunk {
   content: string;
   done: boolean;
 }
+
+/**
+ * Options for cloud flow execution
+ */
+export interface FlowOptions {
+  /** Conversation history to include */
+  history?: string;
+  /** Method to invoke for the flow */
+  invokeMethod?: string;
+  /** Internal variables to pass to the flow */
+  internalVars?: Record<string, unknown>;
+  /** Image URL to include in the flow */
+  imageUrl?: string;
+  /** Allow additional properties for extensibility */
+  [key: string]: unknown;
+}

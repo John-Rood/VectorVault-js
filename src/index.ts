@@ -74,7 +74,8 @@ export type {
   ChatResponseWithContext,
   ChatMessage,
   LLMClientOptions,
-  LLMRequestOptions
+  LLMRequestOptions,
+  FlowOptions
 } from './chat/types.js';
 
 // Chat clients (for advanced usage)
