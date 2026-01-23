@@ -64,7 +64,8 @@ export type {
   StorageManager,
   VectorIndex,
   EmbeddingsProvider,
-  PendingItem
+  PendingItem,
+  VaultSelector
 } from './types.js';
 
 // Chat types

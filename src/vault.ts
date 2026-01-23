@@ -13,7 +13,8 @@ import type {
   ItemMetadata, 
   SearchResult, 
   PendingItem,
-  EmbeddingsProvider 
+  EmbeddingsProvider,
+  VaultSelector 
 } from './types.js';
 import { FAISSIndex } from './vectors/faiss.js';
 import { LocalStorageManager } from './storage/local.js';
@@ -303,6 +304,201 @@ export class Vault {
     }
 
     this.log(`Found ${results.length} similar items`);
+    return results;
+  }
+
+  /**
+   * Search across multiple vaults simultaneously
+   * 
+   * @param text - Query text
+   * @param n - Number of results (default 4)
+   * @param vaults - Vault selector:
+   *   - string: single vault name
+   *   - string[]: merge results, return global top-n
+   *   - Record<string, number>: minimum per vault, fill remaining globally
+   * @returns Array of search results with distances
+   * 
+   * @example Single vault
+   * ```typescript
+   * const results = await vault.getSimilarFromVaults('query', 4, 'other-vault');
+   * ```
+   * 
+   * @example Multiple vaults (merged)
+   * ```typescript
+   * const results = await vault.getSimilarFromVaults('query', 4, ['vault1', 'vault2']);
+   * ```
+   * 
+   * @example Minimum per vault
+   * ```typescript
+   * // At least 2 from vault1, at least 1 from vault2, fill rest globally
+   * const results = await vault.getSimilarFromVaults('query', 6, { vault1: 2, vault2: 1 });
+   * ```
+   */
+  async getSimilarFromVaults(
+    text: string,
+    n: number = 4,
+    vaults?: VaultSelector
+  ): Promise<SearchResult[]> {
+    if (!vaults) {
+      throw new Error('vaults must be provided as a string, string[], or Record<string, number>');
+    }
+
+    if (!this.isLocal) {
+      // Cloud mode
+      return this.cloudStorage!.getSimilarFromVaults(text, n, vaults);
+    }
+
+    // Local mode - get embedding for query
+    const [queryVector] = await this.embeddings!.embed([text]);
+
+    // String: search a single vault
+    if (typeof vaults === 'string') {
+      return this.searchOtherVault(vaults, queryVector, n);
+    }
+
+    // Array: search all, merge, return global top-n
+    if (Array.isArray(vaults)) {
+      const allResults: SearchResult[] = [];
+      
+      for (const vaultName of vaults) {
+        try {
+          const results = await this.searchOtherVault(vaultName, queryVector, n);
+          allResults.push(...results);
+        } catch (error) {
+          this.log(`Warning: Could not search vault "${vaultName}": ${error}`);
+        }
+      }
+      
+      // Sort by distance and return top n
+      return allResults
+        .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
+        .slice(0, n);
+    }
+
+    // Record: minimum per vault, fill remaining globally
+    const minima = vaults as Record<string, number>;
+    const totalMin = Object.values(minima).reduce((sum, v) => sum + v, 0);
+    
+    // If total minimums exceed n, adjust n
+    const effectiveN = Math.max(n, totalMin);
+    
+    const selected: SearchResult[] = [];
+    const leftovers: SearchResult[] = [];
+
+    // Determine how many to fetch from each vault
+    const fetchCount = effectiveN > totalMin ? effectiveN : undefined;
+
+    for (const [vaultName, minCount] of Object.entries(minima)) {
+      try {
+        const results = await this.searchOtherVault(
+          vaultName, 
+          queryVector, 
+          fetchCount ?? minCount
+        );
+        
+        // Take minimum required
+        const takeCount = Math.min(minCount, results.length);
+        selected.push(...results.slice(0, takeCount));
+        
+        // Keep rest as leftovers for global fill
+        if (results.length > takeCount) {
+          leftovers.push(...results.slice(takeCount));
+        }
+      } catch (error) {
+        this.log(`Warning: Could not search vault "${vaultName}": ${error}`);
+      }
+    }
+
+    // Fill remaining slots with best from leftovers
+    const remainingNeeded = Math.max(0, effectiveN - selected.length);
+    if (remainingNeeded > 0) {
+      const sortedLeftovers = leftovers
+        .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+      selected.push(...sortedLeftovers.slice(0, remainingNeeded));
+    }
+
+    return selected;
+  }
+
+  /**
+   * Search another vault by name (local mode helper)
+   * Temporarily loads the other vault's index for searching
+   */
+  private async searchOtherVault(
+    vaultName: string,
+    queryVector: number[],
+    n: number
+  ): Promise<SearchResult[]> {
+    // If searching our own vault, use the loaded index
+    if (vaultName === this.config.vault) {
+      await this.ensureLoaded();
+      if (this.index!.getCount() === 0) {
+        return [];
+      }
+      const searchResult = this.index!.search(queryVector, n);
+      return this.fetchResultItems(searchResult, this.mapping, this.storage!);
+    }
+
+    // Create temporary storage and index for the other vault
+    const otherStorage = new LocalStorageManager(vaultName, this.config.localDir);
+    const otherIndex = new FAISSIndex(this.config.dims ?? 1536);
+
+    // Load other vault's mapping and vectors
+    const otherMapping = await otherStorage.getMapping();
+    if (Object.keys(otherMapping).length === 0) {
+      return [];
+    }
+
+    const vectorPaths = await otherStorage.loadVectors();
+    if (!vectorPaths) {
+      return [];
+    }
+
+    try {
+      otherIndex.load(vectorPaths.indexPath, vectorPaths.metaPath);
+    } catch (error) {
+      this.log(`Warning: Could not load vectors for vault "${vaultName}": ${error}`);
+      return [];
+    }
+
+    if (otherIndex.getCount() === 0) {
+      return [];
+    }
+
+    // Search the other vault's index
+    const searchResult = otherIndex.search(queryVector, n);
+    return this.fetchResultItems(searchResult, otherMapping, otherStorage);
+  }
+
+  /**
+   * Fetch items from search results
+   */
+  private async fetchResultItems(
+    searchResult: { ids: number[]; distances: number[] },
+    mapping: Record<string, string>,
+    storage: LocalStorageManager
+  ): Promise<SearchResult[]> {
+    const results: SearchResult[] = [];
+    
+    for (let i = 0; i < searchResult.ids.length; i++) {
+      const itemId = searchResult.ids[i];
+      const distance = searchResult.distances[i];
+      const uuid = mapping[String(itemId)];
+      
+      if (uuid) {
+        const itemText = await storage.getItemText(uuid);
+        const itemMeta = await storage.getItemMeta(uuid);
+        
+        if (itemText && itemMeta) {
+          results.push({
+            data: itemText,
+            metadata: itemMeta,
+            distance
+          });
+        }
+      }
+    }
+    
     return results;
   }
 

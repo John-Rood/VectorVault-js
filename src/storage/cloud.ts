@@ -417,6 +417,33 @@ export class CloudStorageManager implements StorageManager {
   }
 
   /**
+   * Search across multiple vaults simultaneously
+   * 
+   * @param text - Query text
+   * @param n - Number of results
+   * @param vaults - Vault selector (string, string[], or Record<string, number>)
+   * @returns Array of search results with distances
+   */
+  async getSimilarFromVaults(
+    text: string,
+    n: number = 4,
+    vaults: string | string[] | Record<string, number>
+  ): Promise<Array<{ data: string; metadata: ItemMetadata; distance?: number }>> {
+    const url = `${this.baseUrl}/get_similar_from_vaults`;
+    const response = await this.makeAuthenticatedRequest(url, {
+      method: 'POST',
+      body: JSON.stringify({
+        embeddings_model: this.embeddingsModel,
+        text,
+        num_items: n,
+        vaults
+      })
+    });
+    const data = await response.json() as Array<{ data: string; metadata: ItemMetadata; distance?: number }>;
+    return data;
+  }
+
+  /**
    * Get distance between two items
    */
   async getDistance(id1: number, id2: number): Promise<number> {

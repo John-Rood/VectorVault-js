@@ -126,3 +126,11 @@ export interface PendingItem {
   meta: Partial<ItemMetadata>;
   uuid: string;
 }
+
+/**
+ * Vault selector for cross-vault searches
+ * - string: search a single vault by name
+ * - string[]: search multiple vaults, merge results, return global top-n
+ * - Record<string, number>: minimum results per vault, fill remaining globally
+ */
+export type VaultSelector = string | string[] | Record<string, number>;
