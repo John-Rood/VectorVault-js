@@ -706,6 +706,78 @@ export class CloudStorageManager implements StorageManager {
     }
   }
 
+  // ==================== Import/Export ====================
+
+  /**
+   * Export all vault items to JSON
+   * 
+   * @param includeMeta - Include metadata in export
+   * @returns JSON string of all items
+   */
+  async downloadToJson(includeMeta: boolean = false): Promise<string> {
+    const url = `${this.baseUrl}/download_to_json`;
+    const response = await this.makeAuthenticatedRequest(url, {
+      method: 'POST',
+      body: JSON.stringify({
+        vault: this.vault,
+        return_meta: includeMeta
+      })
+    });
+    const data = await response.json() as string | Record<string, unknown>;
+    
+    // API may return JSON string or object
+    if (typeof data === 'string') {
+      return data;
+    }
+    return JSON.stringify(data);
+  }
+
+  /**
+   * Import items from JSON (replaces vault contents)
+   * 
+   * @param jsonData - JSON string or object with items
+   */
+  async uploadFromJson(jsonData: string | Record<string, { data: string; metadata?: Record<string, unknown> }>): Promise<void> {
+    const url = `${this.baseUrl}/upload_from_json`;
+    
+    // Ensure we send a string
+    const jsonString = typeof jsonData === 'string' ? jsonData : JSON.stringify(jsonData);
+    
+    await this.makeAuthenticatedRequest(url, {
+      method: 'POST',
+      body: JSON.stringify({
+        vault: this.vault,
+        embeddings_model: this.embeddingsModel,
+        json_data: jsonString
+      })
+    });
+  }
+
+  // ==================== Cache Management ====================
+
+  /**
+   * Pre-load all items into memory for faster access
+   * In cloud mode, this fetches all items to warm the server cache
+   * 
+   * @param maxConcurrent - Maximum concurrent loads (not used in cloud mode)
+   */
+  async preloadCache(maxConcurrent: number = 10): Promise<void> {
+    // In cloud mode, we can warm the cache by fetching items in batches
+    const total = await this.getTotalItems();
+    
+    if (total === 0) return;
+
+    const batchSize = Math.min(maxConcurrent * 10, 100);
+    
+    for (let i = 0; i < total; i += batchSize) {
+      const ids = Array.from(
+        { length: Math.min(batchSize, total - i) }, 
+        (_, j) => i + j
+      );
+      await this.getItems(ids);
+    }
+  }
+
   // ==================== Accessors ====================
 
   getVaultName(): string {

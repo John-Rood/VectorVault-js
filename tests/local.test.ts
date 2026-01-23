@@ -341,6 +341,123 @@ Question: {content}`;
       console.log(`✓ Retrieved vector for item 1: ${vector?.length} dimensions`);
     });
   });
+
+  // ==================== Import/Export Tests ====================
+
+  describe('8. Import/Export', () => {
+    it('test_70_download_to_json: Export vault to JSON', async () => {
+      const json = await vault.downloadToJson();
+      
+      expect(typeof json).toBe('string');
+      const parsed = JSON.parse(json);
+      expect(typeof parsed).toBe('object');
+      
+      // Should have items (we have items from earlier tests)
+      const keys = Object.keys(parsed);
+      expect(keys.length).toBeGreaterThan(0);
+      
+      // Each item should have data
+      for (const key of keys) {
+        expect(parsed[key].data).toBeDefined();
+      }
+      
+      console.log(`✓ Exported ${keys.length} items to JSON`);
+    });
+
+    it('test_71_download_to_json_with_meta: Export with metadata', async () => {
+      const json = await vault.downloadToJson(true);
+      const parsed = JSON.parse(json);
+      
+      const keys = Object.keys(parsed);
+      expect(keys.length).toBeGreaterThan(0);
+      
+      // Each item should have data AND metadata
+      for (const key of keys) {
+        expect(parsed[key].data).toBeDefined();
+        expect(parsed[key].metadata).toBeDefined();
+      }
+      
+      console.log(`✓ Exported ${keys.length} items with metadata`);
+    });
+
+    it('test_72_upload_from_json: Import from JSON', async () => {
+      // Create a backup of current data
+      const backup = await vault.downloadToJson(true);
+      const originalCount = await vault.getTotalItems();
+      
+      // Create new data to import
+      const importData = {
+        '0': { data: 'Imported item one' },
+        '1': { data: 'Imported item two' },
+        '2': { data: 'Imported item three' }
+      };
+      
+      // Import the new data (this replaces existing)
+      await vault.uploadFromJson(importData);
+      
+      const newCount = await vault.getTotalItems();
+      expect(newCount).toBe(3);
+      
+      // Verify the items
+      const items = await vault.getItems([0, 1, 2]);
+      expect(items[0].data).toBe('Imported item one');
+      expect(items[1].data).toBe('Imported item two');
+      expect(items[2].data).toBe('Imported item three');
+      
+      console.log(`✓ Imported ${newCount} items from JSON`);
+      
+      // Restore original data
+      await vault.uploadFromJson(backup);
+      const restoredCount = await vault.getTotalItems();
+      expect(restoredCount).toBe(originalCount);
+      console.log(`✓ Restored ${restoredCount} original items`);
+    });
+  });
+
+  // ==================== Vault Cloning Tests ====================
+
+  describe('9. Vault Cloning', () => {
+    it('test_80_duplicate_vault: Clone vault with all items', async () => {
+      const originalCount = await vault.getTotalItems();
+      
+      // Duplicate the vault
+      const clonedVault = await vault.duplicateVault('test_local_clone');
+      
+      // Verify the cloned vault
+      const clonedCount = await clonedVault.getTotalItems();
+      expect(clonedCount).toBe(originalCount);
+      
+      // Verify search works on cloned vault
+      const results = await clonedVault.getSimilar('prince', 2);
+      expect(results.length).toBeGreaterThan(0);
+      
+      console.log(`✓ Cloned vault with ${clonedCount} items`);
+      
+      // Cleanup: delete the cloned vault
+      await clonedVault.delete();
+      
+      const vaults = await vault.getVaults();
+      expect(vaults).not.toContain('test_local_clone');
+      console.log(`✓ Cleaned up cloned vault`);
+    });
+  });
+
+  // ==================== Cache Management Tests ====================
+
+  describe('10. Cache Management', () => {
+    it('test_90_preload_cache: Preload all items into cache', async () => {
+      // This should not throw and should complete successfully
+      const startTime = Date.now();
+      await vault.preloadCache(5);
+      const elapsed = Date.now() - startTime;
+      
+      // Just verify it completed
+      const totalItems = await vault.getTotalItems();
+      console.log(`✓ Preloaded ${totalItems} items in ${elapsed}ms`);
+      
+      expect(totalItems).toBeGreaterThan(0);
+    });
+  });
 });
 
 // Custom matcher extension

@@ -1103,6 +1103,248 @@ export class Vault {
     yield* this.cloudStorage!.streamFlow(flowName, message, options);
   }
 
+  // ==================== Import/Export ====================
+
+  /**
+   * Export all vault items to JSON
+   * 
+   * @example Basic export
+   * ```typescript
+   * const json = await vault.downloadToJson();
+   * fs.writeFileSync('backup.json', json);
+   * ```
+   * 
+   * @example Export with metadata
+   * ```typescript
+   * const json = await vault.downloadToJson(true);
+   * const data = JSON.parse(json);
+   * console.log(data['0'].metadata); // { name: '...', item_id: 0, ... }
+   * ```
+   * 
+   * @param includeMeta - Include metadata in export (default: false)
+   * @returns JSON string of all items
+   */
+  async downloadToJson(includeMeta: boolean = false): Promise<string> {
+    if (!this.isLocal) {
+      return this.cloudStorage!.downloadToJson(includeMeta);
+    }
+
+    await this.ensureLoaded();
+
+    const results: Record<string, { data: string; metadata?: ItemMetadata }> = {};
+    
+    // Get all items by their IDs
+    const itemIds = Object.keys(this.mapping).map(Number).sort((a, b) => a - b);
+    
+    for (const itemId of itemIds) {
+      const uuid = this.mapping[String(itemId)];
+      if (uuid) {
+        const itemText = await this.storage!.getItemText(uuid);
+        const itemMeta = await this.storage!.getItemMeta(uuid);
+        
+        if (itemText) {
+          if (includeMeta && itemMeta) {
+            results[String(itemId)] = { data: itemText, metadata: itemMeta };
+          } else {
+            results[String(itemId)] = { data: itemText };
+          }
+        }
+      }
+    }
+
+    this.log(`Exported ${Object.keys(results).length} items to JSON`);
+    return JSON.stringify(results);
+  }
+
+  /**
+   * Import items from JSON (replaces vault contents)
+   * 
+   * WARNING: This will delete all existing items in the vault!
+   * 
+   * @example Import from JSON string
+   * ```typescript
+   * const json = fs.readFileSync('backup.json', 'utf-8');
+   * await vault.uploadFromJson(json);
+   * ```
+   * 
+   * @example Import from object
+   * ```typescript
+   * const data = {
+   *   '0': { data: 'First item' },
+   *   '1': { data: 'Second item', metadata: { category: 'test' } }
+   * };
+   * await vault.uploadFromJson(data);
+   * ```
+   * 
+   * @param jsonData - JSON string or object with items
+   */
+  async uploadFromJson(jsonData: string | Record<string, { data: string; metadata?: Partial<ItemMetadata> }>): Promise<void> {
+    // Parse JSON if string
+    let items: Record<string, { data: string; metadata?: Partial<ItemMetadata> }>;
+    
+    if (typeof jsonData === 'string') {
+      try {
+        let parsed = JSON.parse(jsonData);
+        // Handle double-wrapped JSON
+        if (typeof parsed === 'string') {
+          parsed = JSON.parse(parsed);
+        }
+        items = parsed;
+      } catch (error) {
+        throw new Error(`Failed to parse JSON: ${error}`);
+      }
+    } else {
+      items = jsonData;
+    }
+
+    if (typeof items !== 'object' || items === null) {
+      throw new Error('Invalid JSON format: expected object');
+    }
+
+    this.log('Deleting existing items...');
+    
+    // Delete existing items
+    const existingCount = await this.getTotalItems();
+    if (existingCount > 0) {
+      const existingIds = Array.from({ length: existingCount }, (_, i) => i);
+      await this.deleteItems(existingIds);
+    }
+
+    this.log(`Importing ${Object.keys(items).length} items...`);
+
+    // Add new items
+    const sortedKeys = Object.keys(items).sort((a, b) => Number(a) - Number(b));
+    for (const key of sortedKeys) {
+      const item = items[key];
+      if (!item.data) {
+        this.log(`Skipping item ${key}: no data field`);
+        continue;
+      }
+      this.add(item.data, item.metadata);
+    }
+
+    // Generate embeddings and save
+    await this.getVectors();
+    await this.save();
+
+    this.log(`Successfully imported ${sortedKeys.length} items`);
+  }
+
+  // ==================== Vault Cloning ====================
+
+  /**
+   * Clone this vault with all items to a new vault
+   * 
+   * @example
+   * ```typescript
+   * const newVault = await vault.duplicateVault('backup_vault');
+   * console.log(await newVault.getTotalItems()); // Same as original
+   * ```
+   * 
+   * @param newVaultName - Name for the new vault
+   * @returns New Vault instance with all items copied
+   */
+  async duplicateVault(newVaultName: string): Promise<Vault> {
+    this.log(`Duplicating vault to "${newVaultName}"...`);
+
+    // Create new vault with same config
+    const newVault = new Vault({
+      ...this.config,
+      vault: newVaultName
+    });
+
+    // Get total items
+    const totalItems = await this.getTotalItems();
+    
+    if (totalItems === 0) {
+      this.log('No items to duplicate');
+      return newVault;
+    }
+
+    // Copy all items
+    for (let i = 0; i < totalItems; i++) {
+      const items = await this.getItems([i]);
+      if (items.length > 0) {
+        const item = items[0];
+        newVault.add(item.data, item.metadata);
+      }
+      if (this.verbose && (i + 1) % 10 === 0) {
+        this.log(`Copied ${i + 1}/${totalItems} items`);
+      }
+    }
+
+    // Generate embeddings and save
+    await newVault.getVectors();
+    await newVault.save();
+
+    // Copy prompts
+    const personality = await this.fetchPersonalityMessage();
+    if (personality) {
+      await newVault.savePersonalityMessage(personality);
+    }
+
+    const promptWithContext = await this.fetchCustomPrompt(true);
+    if (promptWithContext) {
+      await newVault.saveCustomPrompt(promptWithContext, true);
+    }
+
+    const promptNoContext = await this.fetchCustomPrompt(false);
+    if (promptNoContext) {
+      await newVault.saveCustomPrompt(promptNoContext, false);
+    }
+
+    this.log(`Duplicated ${totalItems} items to "${newVaultName}"`);
+    return newVault;
+  }
+
+  // ==================== Cache Management ====================
+
+  /**
+   * Pre-load all items into memory for faster access
+   * 
+   * Useful before running many searches or operations on the vault.
+   * In local mode, this loads all item text and metadata into the storage cache.
+   * 
+   * @example
+   * ```typescript
+   * // Preload before batch operations
+   * await vault.preloadCache();
+   * 
+   * // Now searches will be faster
+   * for (const query of queries) {
+   *   const results = await vault.getSimilar(query);
+   * }
+   * ```
+   * 
+   * @param maxConcurrent - Maximum concurrent loads (default: 10)
+   */
+  async preloadCache(maxConcurrent: number = 10): Promise<void> {
+    if (!this.isLocal) {
+      return this.cloudStorage!.preloadCache(maxConcurrent);
+    }
+
+    await this.ensureLoaded();
+
+    const uuids = Object.values(this.mapping);
+    this.log(`Preloading ${uuids.length} items with ${maxConcurrent} workers...`);
+
+    // Process in batches to control concurrency
+    for (let i = 0; i < uuids.length; i += maxConcurrent) {
+      const batch = uuids.slice(i, i + maxConcurrent);
+      await Promise.all(batch.map(async (uuid) => {
+        try {
+          // These calls populate the internal cache
+          await this.storage!.getItemText(uuid);
+          await this.storage!.getItemMeta(uuid);
+        } catch (error) {
+          this.log(`Failed to preload item ${uuid}: ${error}`);
+        }
+      }));
+    }
+
+    this.log(`Preloaded ${uuids.length} items into cache`);
+  }
+
   // ==================== Utilities ====================
 
   /**

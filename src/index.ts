@@ -87,3 +87,6 @@ export { FAISSIndex } from './vectors/faiss.js';
 export { LocalStorageManager } from './storage/local.js';
 export { CloudStorageManager } from './storage/cloud.js';
 export { OpenAIEmbeddings } from './embeddings/openai.js';
+
+// Utilities
+export { RateLimiter, sleep } from './utils/index.js';
