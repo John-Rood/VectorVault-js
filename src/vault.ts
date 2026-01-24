@@ -91,16 +91,16 @@ export class Vault {
           this.config.geminiKey,
           embeddingsModel
         );
-      } else {
-        // OpenAI embeddings (default)
-        if (!this.config.openaiKey) {
-          throw new Error('OpenAI API key is required (openaiKey)');
-        }
+      } else if (this.config.openaiKey) {
+        // OpenAI embeddings (default, optional)
         this.index = new FAISSIndex(this.config.dims ?? 1536);
         this.embeddings = new OpenAIEmbeddings(
           this.config.openaiKey,
           embeddingsModel
         );
+      } else {
+        // No embeddings provider - vault will work for storage only
+        this.index = new FAISSIndex(this.config.dims ?? 1536);
       }
 
       // Auto-select chat client based on model
@@ -234,8 +234,11 @@ export class Vault {
     await this.ensureLoaded();
 
     this.log(`Generating embeddings for ${this.pendingItems.length} items...`);
+    if (!this.embeddings) {
+      throw new Error('Embeddings not initialized. Provide openaiKey or geminiKey in config to generate vectors.');
+    }
     const texts = this.pendingItems.map(item => item.text);
-    const vectors = await this.embeddings!.embed(texts);
+    const vectors = await this.embeddings.embed(texts);
 
     // Add vectors to index
     for (let i = 0; i < this.pendingItems.length; i++) {
@@ -345,7 +348,10 @@ export class Vault {
     }
 
     // Get embedding for search text
-    const queryVector = await this.embeddings!.embed([text]);
+    if (!this.embeddings) {
+      throw new Error('Embeddings not initialized. Provide openaiKey or geminiKey in config to use getSimilar.');
+    }
+    const queryVector = await this.embeddings.embed([text]);
     
     // Search index
     const searchResult = this.index!.search(queryVector[0], n);
@@ -417,7 +423,10 @@ export class Vault {
     }
 
     // Local mode - get embedding for query
-    const [queryVector] = await this.embeddings!.embed([text]);
+    if (!this.embeddings) {
+      throw new Error('Embeddings not initialized. Provide openaiKey or geminiKey in config.');
+    }
+    const [queryVector] = await this.embeddings.embed([text]);
 
     // String: search a single vault
     if (typeof vaults === 'string') {
@@ -648,7 +657,10 @@ export class Vault {
     meta.time = Date.now() / 1000;
 
     // Generate new embedding
-    const [newVector] = await this.embeddings!.embed([newText]);
+    if (!this.embeddings) {
+      throw new Error('Embeddings not initialized. Provide openaiKey or geminiKey in config.');
+    }
+    const [newVector] = await this.embeddings.embed([newText]);
 
     // Update storage
     await this.storage!.upload(uuid, newText, meta);

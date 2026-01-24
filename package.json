@@ -1,6 +1,6 @@
 {
   "name": "vectorvault",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Vector database for AI applications - local FAISS-powered vector search in TypeScript",
   "type": "module",
   "main": "dist/index.cjs",
