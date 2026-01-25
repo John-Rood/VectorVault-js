@@ -3,14 +3,56 @@
  * 
  * Uses faiss-node for efficient similarity search with IndexFlatIP (inner product).
  * Vectors are L2-normalized before adding so inner product = cosine similarity.
+ * 
+ * faiss-node is an optional dependency - if not installed, this module throws
+ * an error when instantiated.
  */
 
-import faiss from 'faiss-node';
-const { IndexFlatIP } = faiss;
 import * as fs from 'node:fs';
 import type { VectorIndex, VectorSearchResult } from '../types.js';
 
-type IndexFlatIPType = InstanceType<typeof IndexFlatIP>;
+// Lazy-load faiss-node (optional dependency)
+let IndexFlatIP: any = null;
+let faissLoadAttempted = false;
+let faissLoadError: Error | null = null;
+
+/**
+ * Attempt to load faiss-node (called lazily on first use)
+ */
+function ensureFaissLoaded(): void {
+  if (faissLoadAttempted) return;
+  faissLoadAttempted = true;
+  
+  try {
+    // Use require for synchronous loading (works in both ESM and CJS)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const faissModule = require('faiss-node');
+    IndexFlatIP = faissModule.IndexFlatIP;
+  } catch (err) {
+    faissLoadError = new Error(
+      'faiss-node is not installed. Install it with: npm install faiss-node\n' +
+      'Note: faiss-node requires native bindings and may not work on all platforms.'
+    );
+  }
+}
+
+type IndexFlatIPType = any;
+
+/**
+ * Check if faiss-node is available
+ */
+export function isFaissAvailable(): boolean {
+  ensureFaissLoaded();
+  return IndexFlatIP !== null;
+}
+
+/**
+ * Get the faiss-node load error (if any)
+ */
+export function getFaissLoadError(): Error | null {
+  ensureFaissLoaded();
+  return faissLoadError;
+}
 
 export class FAISSIndex implements VectorIndex {
   private index: IndexFlatIPType;
@@ -19,6 +61,10 @@ export class FAISSIndex implements VectorIndex {
   private built: boolean = false;
 
   constructor(dims: number = 1536) {
+    ensureFaissLoaded();
+    if (!IndexFlatIP) {
+      throw faissLoadError ?? new Error('faiss-node is not available');
+    }
     this.dims = dims;
     this.index = new IndexFlatIP(dims);
     this.vectors = new Map();
@@ -126,7 +172,12 @@ export class FAISSIndex implements VectorIndex {
   /**
    * Save the index to files
    * - indexPath: FAISS index file
-   * - metaPath: JSON file with vectors map for reconstruction
+   * - metaPath: JSONL file with vectors map for reconstruction
+   * 
+   * JSONL format (one JSON object per line):
+   *   {"dims":1536}
+   *   {"id":0,"vector":[0.1,0.2,...]}
+   *   {"id":1,"vector":[0.3,0.4,...]}
    */
   save(indexPath: string, metaPath: string): void {
     if (!this.built) {
@@ -136,36 +187,81 @@ export class FAISSIndex implements VectorIndex {
     // Save FAISS index
     this.index.write(indexPath);
 
-    // Save vectors map as JSON for reconstruction
-    const vectorsObj: Record<number, number[]> = {};
-    this.vectors.forEach((vec, id) => {
-      vectorsObj[id] = Array.from(vec);
-    });
+    // Determine format by extension
+    const useJsonl = metaPath.endsWith('.jsonl');
 
-    const meta = {
-      dims: this.dims,
-      vectors: vectorsObj
-    };
+    if (useJsonl) {
+      // JSONL format - streaming writes, no string size limits
+      const lines: string[] = [];
+      lines.push(JSON.stringify({ dims: this.dims }));
+      
+      this.vectors.forEach((vec, id) => {
+        lines.push(JSON.stringify({ id, vector: Array.from(vec) }));
+      });
+      
+      const tempPath = metaPath + '.tmp';
+      fs.writeFileSync(tempPath, lines.join('\n') + '\n', 'utf-8');
+      fs.renameSync(tempPath, metaPath);
+    } else {
+      // Legacy JSON format (for backward compatibility)
+      const vectorsObj: Record<number, number[]> = {};
+      this.vectors.forEach((vec, id) => {
+        vectorsObj[id] = Array.from(vec);
+      });
 
-    fs.writeFileSync(metaPath, JSON.stringify(meta));
+      const meta = {
+        dims: this.dims,
+        vectors: vectorsObj
+      };
+
+      fs.writeFileSync(metaPath, JSON.stringify(meta));
+    }
   }
 
   /**
    * Load the index from files
+   * Supports both JSONL and legacy JSON formats
    */
   load(indexPath: string, metaPath: string): void {
+    ensureFaissLoaded();
+    if (!IndexFlatIP) {
+      throw faissLoadError ?? new Error('faiss-node is not available');
+    }
     // Load FAISS index
     this.index = IndexFlatIP.read(indexPath) as IndexFlatIPType;
 
-    // Load vectors map
+    // Load vectors map - detect format by extension
     const metaContent = fs.readFileSync(metaPath, 'utf-8');
-    const meta = JSON.parse(metaContent) as { dims: number; vectors: Record<string, number[]> };
+    const useJsonl = metaPath.endsWith('.jsonl');
     
-    this.dims = meta.dims;
     this.vectors = new Map();
-    
-    for (const [idStr, vec] of Object.entries(meta.vectors)) {
-      this.vectors.set(Number(idStr), new Float32Array(vec));
+
+    if (useJsonl) {
+      // JSONL format - parse line by line
+      const lines = metaContent.split('\n').filter(line => line.trim());
+      
+      if (lines.length === 0) {
+        throw new Error('Empty JSONL metadata file');
+      }
+      
+      // First line contains dims
+      const header = JSON.parse(lines[0]) as { dims: number };
+      this.dims = header.dims;
+      
+      // Rest are vector entries
+      for (let i = 1; i < lines.length; i++) {
+        const entry = JSON.parse(lines[i]) as { id: number; vector: number[] };
+        this.vectors.set(entry.id, new Float32Array(entry.vector));
+      }
+    } else {
+      // Legacy JSON format
+      const meta = JSON.parse(metaContent) as { dims: number; vectors: Record<string, number[]> };
+      
+      this.dims = meta.dims;
+      
+      for (const [idStr, vec] of Object.entries(meta.vectors)) {
+        this.vectors.set(Number(idStr), new Float32Array(vec));
+      }
     }
 
     this.built = true;

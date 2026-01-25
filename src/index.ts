@@ -83,8 +83,9 @@ export type {
 export { LLMClient, OpenAIChatClient, AnthropicChatClient } from './chat/index.js';
 
 // Components (for advanced usage)
-export { FAISSIndex } from './vectors/faiss.js';
+export { FAISSIndex, isFaissAvailable, getFaissLoadError } from './vectors/faiss.js';
 export { LocalStorageManager } from './storage/local.js';
+export type { VectorMeta, VectorMetaItem } from './storage/local.js';
 export { CloudStorageManager } from './storage/cloud.js';
 export { OpenAIEmbeddings } from './embeddings/openai.js';
 export { GeminiEmbeddings } from './embeddings/gemini.js';

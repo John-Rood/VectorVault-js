@@ -458,6 +458,103 @@ Question: {content}`;
       expect(totalItems).toBeGreaterThan(0);
     });
   });
+
+  // ==================== JSONL Storage Tests ====================
+
+  describe('11. JSONL Storage Format', () => {
+    it('test_100_jsonl_file_created: Vectors saved in JSONL format', async () => {
+      const vaultDir = path.join(TEST_DIR, 'test_local');
+      const jsonlPath = path.join(vaultDir, 'vectors.faiss.meta.jsonl');
+      const legacyPath = path.join(vaultDir, 'vectors.faiss.meta.json');
+      
+      // JSONL file should exist
+      expect(fs.existsSync(jsonlPath)).toBe(true);
+      
+      // Legacy JSON file should NOT exist (unless migrated)
+      expect(fs.existsSync(legacyPath)).toBe(false);
+      
+      console.log(`✓ JSONL metadata file exists at ${jsonlPath}`);
+    });
+
+    it('test_101_jsonl_format_valid: JSONL file has correct structure', async () => {
+      const vaultDir = path.join(TEST_DIR, 'test_local');
+      const jsonlPath = path.join(vaultDir, 'vectors.faiss.meta.jsonl');
+      
+      const content = fs.readFileSync(jsonlPath, 'utf-8');
+      const lines = content.split('\n').filter(line => line.trim());
+      
+      // First line should be header with dims
+      const header = JSON.parse(lines[0]);
+      expect(header).toHaveProperty('dims');
+      expect(typeof header.dims).toBe('number');
+      
+      // Rest should be vector entries
+      for (let i = 1; i < lines.length; i++) {
+        const entry = JSON.parse(lines[i]);
+        expect(entry).toHaveProperty('id');
+        expect(entry).toHaveProperty('vector');
+        expect(typeof entry.id).toBe('number');
+        expect(Array.isArray(entry.vector)).toBe(true);
+      }
+      
+      console.log(`✓ JSONL format valid: ${lines.length - 1} vectors with dims=${header.dims}`);
+    });
+
+    it('test_102_jsonl_migration: Legacy JSON migrated to JSONL', async () => {
+      // Create a test vault with legacy format
+      const legacyVaultName = 'test_legacy_migration';
+      const legacyVaultDir = path.join(TEST_DIR, legacyVaultName);
+      fs.mkdirSync(legacyVaultDir, { recursive: true });
+      fs.mkdirSync(path.join(legacyVaultDir, 'items'), { recursive: true });
+      fs.mkdirSync(path.join(legacyVaultDir, 'meta'), { recursive: true });
+      
+      // Create fake legacy files
+      const legacyMeta = {
+        dims: 1536,
+        vectors: {
+          '0': Array(1536).fill(0.1),
+          '1': Array(1536).fill(0.2)
+        }
+      };
+      
+      fs.writeFileSync(
+        path.join(legacyVaultDir, 'vectors.faiss.meta.json'),
+        JSON.stringify(legacyMeta)
+      );
+      
+      // Create empty mapping
+      fs.writeFileSync(
+        path.join(legacyVaultDir, 'mapping.json'),
+        JSON.stringify({})
+      );
+      
+      // Import LocalStorageManager directly
+      const { LocalStorageManager } = await import('../src/storage/local.js');
+      const storage = new LocalStorageManager(legacyVaultName, TEST_DIR);
+      
+      // Trigger migration by calling loadVectors
+      await storage.loadVectors();
+      
+      // Check migration occurred
+      const jsonlPath = path.join(legacyVaultDir, 'vectors.faiss.meta.jsonl');
+      const legacyPath = path.join(legacyVaultDir, 'vectors.faiss.meta.json');
+      const backupPath = legacyPath + '.bak';
+      
+      expect(fs.existsSync(jsonlPath)).toBe(true);
+      expect(fs.existsSync(backupPath)).toBe(true);
+      expect(fs.existsSync(legacyPath)).toBe(false);
+      
+      // Verify JSONL content
+      const content = fs.readFileSync(jsonlPath, 'utf-8');
+      const lines = content.split('\n').filter(line => line.trim());
+      expect(lines.length).toBe(3); // header + 2 vectors
+      
+      console.log(`✓ Legacy JSON migrated to JSONL, backup created at ${backupPath}`);
+      
+      // Cleanup
+      fs.rmSync(legacyVaultDir, { recursive: true, force: true });
+    });
+  });
 });
 
 // Custom matcher extension

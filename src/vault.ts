@@ -16,7 +16,7 @@ import type {
   EmbeddingsProvider,
   VaultSelector 
 } from './types.js';
-import { FAISSIndex } from './vectors/faiss.js';
+import { FAISSIndex, isFaissAvailable, getFaissLoadError } from './vectors/faiss.js';
 import { LocalStorageManager } from './storage/local.js';
 import { CloudStorageManager } from './storage/cloud.js';
 import { OpenAIEmbeddings } from './embeddings/openai.js';
@@ -75,6 +75,16 @@ export class Vault {
     if (this.isLocal) {
       // Local mode
       this.storage = new LocalStorageManager(this.config.vault, this.config.localDir);
+
+      // Check if faiss-node is available for local vector operations
+      if (!isFaissAvailable()) {
+        const err = getFaissLoadError();
+        throw new Error(
+          'Local mode requires faiss-node for vector operations.\n' +
+          (err?.message ?? 'Install it with: npm install faiss-node') + '\n' +
+          'Alternatively, use cloud mode (local: false) which does not require faiss-node.'
+        );
+      }
 
       // Auto-select embeddings provider based on model
       const embeddingsModel = this.config.embeddingsModel ?? 'text-embedding-3-small';

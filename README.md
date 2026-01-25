@@ -53,6 +53,29 @@ console.log(results[0].data);
 npm install vectorvault
 ```
 
+### Local Mode (FAISS)
+
+For local vector search, you need [faiss-node](https://www.npmjs.com/package/faiss-node):
+
+```bash
+npm install faiss-node
+```
+
+> **Note:** `faiss-node` requires native bindings. If installation fails on your platform, you can still use **Cloud Mode** which doesn't require faiss-node.
+
+### Cloud Mode (No native dependencies)
+
+Cloud mode connects to VectorVault Cloud and works without faiss-node:
+
+```typescript
+const vault = new Vault({
+  vault: 'my_vault',
+  user: 'your@email.com',
+  apiKey: 'vv_your_api_key',
+  local: false  // Cloud mode - no faiss-node needed
+});
+```
+
 ## Quick Start
 
 ### Local Mode (Recommended for Development)
