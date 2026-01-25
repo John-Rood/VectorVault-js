@@ -464,8 +464,8 @@ Question: {content}`;
   describe('11. JSONL Storage Format', () => {
     it('test_100_jsonl_file_created: Vectors saved in JSONL format', async () => {
       const vaultDir = path.join(TEST_DIR, 'test_local');
-      const jsonlPath = path.join(vaultDir, 'vectors.faiss.meta.jsonl');
-      const legacyPath = path.join(vaultDir, 'vectors.faiss.meta.json');
+      const jsonlPath = path.join(vaultDir, 'vectors.meta.jsonl');
+      const legacyPath = path.join(vaultDir, 'vectors.meta.json');
       
       // JSONL file should exist
       expect(fs.existsSync(jsonlPath)).toBe(true);
@@ -478,7 +478,7 @@ Question: {content}`;
 
     it('test_101_jsonl_format_valid: JSONL file has correct structure', async () => {
       const vaultDir = path.join(TEST_DIR, 'test_local');
-      const jsonlPath = path.join(vaultDir, 'vectors.faiss.meta.jsonl');
+      const jsonlPath = path.join(vaultDir, 'vectors.meta.jsonl');
       
       const content = fs.readFileSync(jsonlPath, 'utf-8');
       const lines = content.split('\n').filter(line => line.trim());
@@ -536,7 +536,7 @@ Question: {content}`;
       await storage.loadVectors();
       
       // Check migration occurred
-      const jsonlPath = path.join(legacyVaultDir, 'vectors.faiss.meta.jsonl');
+      const jsonlPath = path.join(legacyVaultDir, 'vectors.meta.jsonl');
       const legacyPath = path.join(legacyVaultDir, 'vectors.faiss.meta.json');
       const backupPath = legacyPath + '.bak';
       

@@ -1,8 +1,8 @@
 /**
  * VectorVault - Main Vault Class
- * 
+ *
  * A local-first vector database for AI applications.
- * Uses FAISS for efficient similarity search in local mode,
+ * Uses pure TypeScript in-memory vector search in local mode,
  * or VectorVault Cloud API for cloud mode.
  */
 
@@ -16,7 +16,7 @@ import type {
   EmbeddingsProvider,
   VaultSelector 
 } from './types.js';
-import { FAISSIndex, isFaissAvailable, getFaissLoadError } from './vectors/faiss.js';
+import { MemoryVectorIndex } from './vectors/memory.js';
 import { LocalStorageManager } from './storage/local.js';
 import { CloudStorageManager } from './storage/cloud.js';
 import { OpenAIEmbeddings } from './embeddings/openai.js';
@@ -47,7 +47,7 @@ export class Vault {
   private config: VaultConfig;
   private storage: LocalStorageManager | null = null;
   private cloudStorage: CloudStorageManager | null = null;
-  private index: FAISSIndex | null = null;
+  private index: MemoryVectorIndex | null = null;
   private embeddings: EmbeddingsProvider | null = null;
   private chatClient: LLMClient | null = null;
   private mapping: Record<string, string> = {};
@@ -76,16 +76,6 @@ export class Vault {
       // Local mode
       this.storage = new LocalStorageManager(this.config.vault, this.config.localDir);
 
-      // Check if faiss-node is available for local vector operations
-      if (!isFaissAvailable()) {
-        const err = getFaissLoadError();
-        throw new Error(
-          'Local mode requires faiss-node for vector operations.\n' +
-          (err?.message ?? 'Install it with: npm install faiss-node') + '\n' +
-          'Alternatively, use cloud mode (local: false) which does not require faiss-node.'
-        );
-      }
-
       // Auto-select embeddings provider based on model
       const embeddingsModel = this.config.embeddingsModel ?? 'text-embedding-3-small';
       
@@ -96,21 +86,21 @@ export class Vault {
         }
         // Adjust dimensions for Gemini (768 vs OpenAI's 1536/3072)
         this.config.dims = 768;
-        this.index = new FAISSIndex(768);
+        this.index = new MemoryVectorIndex(768);
         this.embeddings = new GeminiEmbeddings(
           this.config.geminiKey,
           embeddingsModel
         );
       } else if (this.config.openaiKey) {
         // OpenAI embeddings (default, optional)
-        this.index = new FAISSIndex(this.config.dims ?? 1536);
+        this.index = new MemoryVectorIndex(this.config.dims ?? 1536);
         this.embeddings = new OpenAIEmbeddings(
           this.config.openaiKey,
           embeddingsModel
         );
       } else {
         // No embeddings provider - vault will work for storage only
-        this.index = new FAISSIndex(this.config.dims ?? 1536);
+        this.index = new MemoryVectorIndex(this.config.dims ?? 1536);
       }
 
       // Auto-select chat client based on model
@@ -528,7 +518,7 @@ export class Vault {
 
     // Create temporary storage and index for the other vault
     const otherStorage = new LocalStorageManager(vaultName, this.config.localDir);
-    const otherIndex = new FAISSIndex(this.config.dims ?? 1536);
+    const otherIndex = new MemoryVectorIndex(this.config.dims ?? 1536);
 
     // Load other vault's mapping and vectors
     const otherMapping = await otherStorage.getMapping();
@@ -708,7 +698,7 @@ export class Vault {
     }
 
     // Rebuild index without deleted items
-    const newIndex = new FAISSIndex(this.config.dims ?? 1536);
+    const newIndex = new MemoryVectorIndex(this.config.dims ?? 1536);
     const newMapping: Record<string, string> = {};
     let newId = 0;
 
@@ -792,7 +782,7 @@ export class Vault {
     this.mapping = {};
     this.pendingItems = [];
     this.nextId = 0;
-    this.index = new FAISSIndex(this.config.dims ?? 1536);
+    this.index = new MemoryVectorIndex(this.config.dims ?? 1536);
     this.loaded = false;
     this.log(`Vault "${this.config.vault}" deleted`);
   }

@@ -1,13 +1,13 @@
 /**
  * Local Filesystem Storage Manager
- * 
+ *
  * Stores vault data on the local filesystem.
  * Directory structure:
  *   ~/.vectorvault/{vault_name}/
  *     ├── items/{uuid}.txt      - Item text content
  *     ├── meta/{uuid}.json      - Item metadata
- *     ├── vectors.faiss         - FAISS index file
- *     ├── vectors.faiss.meta.jsonl - Vector metadata (JSONL format for large vaults)
+ *     ├── vectors.bin           - Binary vector index file
+ *     ├── vectors.meta.jsonl    - Vector metadata (JSONL format)
  *     ├── mapping.json          - ID to UUID mapping
  *     ├── vault_meta.json       - Vault metadata
  *     └── prompts.json          - Custom prompts
@@ -167,9 +167,9 @@ export class LocalStorageManager implements StorageManager {
   // ==================== Vector Operations ====================
 
   async saveVectors(indexPath: string, metaPath: string): Promise<void> {
-    // Vectors are saved directly by FAISSIndex, this just ensures paths are in vault
-    const destIndex = path.join(this.vaultDir, 'vectors.faiss');
-    const destMeta = path.join(this.vaultDir, 'vectors.faiss.meta.json');
+    // Vectors are saved directly by VectorIndex, this just ensures paths are in vault
+    const destIndex = this.getVectorsIndexPath();
+    const destMeta = this.getVectorsMetaPath();
 
     if (indexPath !== destIndex) {
       fs.copyFileSync(indexPath, destIndex);
@@ -180,23 +180,31 @@ export class LocalStorageManager implements StorageManager {
   }
 
   async loadVectors(): Promise<{ indexPath: string; metaPath: string } | null> {
-    const indexPath = path.join(this.vaultDir, 'vectors.faiss');
+    const indexPath = this.getVectorsIndexPath();
     const metaPathJsonl = this.getVectorsMetaPath();
-    const metaPathLegacy = this.getVectorsMetaPathLegacy();
 
-    // Try migration first if legacy exists
-    if (!fs.existsSync(metaPathJsonl) && fs.existsSync(metaPathLegacy)) {
-      this.migrateVectorMetaToJsonl();
-    }
-
-    // Prefer JSONL format
+    // Try new format first
     if (fs.existsSync(indexPath) && fs.existsSync(metaPathJsonl)) {
       return { indexPath, metaPath: metaPathJsonl };
     }
 
-    // Fallback to legacy if migration failed
-    if (fs.existsSync(indexPath) && fs.existsSync(metaPathLegacy)) {
-      return { indexPath, metaPath: metaPathLegacy };
+    // Try migrating from legacy FAISS format
+    const legacyIndexPath = path.join(this.vaultDir, 'vectors.faiss');
+    const legacyMetaJsonl = path.join(this.vaultDir, 'vectors.faiss.meta.jsonl');
+    const legacyMetaJson = path.join(this.vaultDir, 'vectors.faiss.meta.json');
+
+    // Migrate from FAISS JSONL format
+    if (fs.existsSync(legacyMetaJsonl)) {
+      // FAISS binary index not compatible, but we can use the JSONL metadata
+      return { indexPath: legacyIndexPath, metaPath: legacyMetaJsonl };
+    }
+
+    // Migrate from FAISS JSON format
+    if (fs.existsSync(legacyMetaJson)) {
+      this.migrateVectorMetaToJsonl();
+      if (fs.existsSync(legacyMetaJsonl)) {
+        return { indexPath: legacyIndexPath, metaPath: legacyMetaJsonl };
+      }
     }
 
     return null;
@@ -206,14 +214,14 @@ export class LocalStorageManager implements StorageManager {
    * Get path for vectors index file
    */
   getVectorsIndexPath(): string {
-    return path.join(this.vaultDir, 'vectors.faiss');
+    return path.join(this.vaultDir, 'vectors.bin');
   }
 
   /**
    * Get path for vectors meta file (JSONL format)
    */
   getVectorsMetaPath(): string {
-    return path.join(this.vaultDir, 'vectors.faiss.meta.jsonl');
+    return path.join(this.vaultDir, 'vectors.meta.jsonl');
   }
 
   /**

@@ -1,7 +1,7 @@
 {
   "name": "vectorvault",
   "version": "2.2.2",
-  "description": "Vector database for AI applications - local FAISS-powered vector search in TypeScript",
+  "description": "Vector database for AI applications - pure TypeScript vector search with no native dependencies",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -31,7 +31,6 @@
     "vectorvault",
     "vector",
     "database",
-    "faiss",
     "embeddings",
     "RAG",
     "AI",
@@ -45,9 +44,6 @@
   },
   "homepage": "https://github.com/John-Rood/vectorvault-js#readme",
   "dependencies": {},
-  "optionalDependencies": {
-    "faiss-node": "^0.5.1"
-  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "tsup": "^8.0.0",

@@ -1,8 +1,8 @@
 /**
  * VectorVault - TypeScript
- * 
+ *
  * A local-first vector database for AI applications.
- * First library to offer native FAISS-powered local vector search in TypeScript.
+ * Pure TypeScript vector search with no native dependencies.
  * Also supports VectorVault Cloud for managed storage.
  * 
  * @example Local Mode
@@ -83,7 +83,7 @@ export type {
 export { LLMClient, OpenAIChatClient, AnthropicChatClient } from './chat/index.js';
 
 // Components (for advanced usage)
-export { FAISSIndex, isFaissAvailable, getFaissLoadError } from './vectors/faiss.js';
+export { MemoryVectorIndex, isMemoryIndexAvailable } from './vectors/memory.js';
 export { LocalStorageManager } from './storage/local.js';
 export type { VectorMeta, VectorMetaItem } from './storage/local.js';
 export { CloudStorageManager } from './storage/cloud.js';
