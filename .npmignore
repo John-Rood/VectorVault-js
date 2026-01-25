@@ -9,12 +9,19 @@ vitest.config.ts
 # Config
 tsconfig.json
 .gitattributes
+tsup.config.ts
+
+# Secrets
+.env
+.env.*
 
 # Dev files
 .git/
 .github/
 .vscode/
 .idea/
+.tldr/
+.tldrignore
 
 # OS files
 .DS_Store
