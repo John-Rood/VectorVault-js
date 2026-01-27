@@ -382,6 +382,66 @@ export class Vault {
   }
 
   /**
+   * Generate an embedding vector for a text string.
+   * Use this to embed once and then call searchByVector() multiple times.
+   */
+  async embedText(text: string): Promise<number[]> {
+    if (!this.isLocal) {
+      throw new Error('embedText is only supported in local mode');
+    }
+    if (!this.embeddings) {
+      throw new Error('Embeddings not initialized. Provide openaiKey or geminiKey in config to use embedText.');
+    }
+    const vectors = await this.embeddings.embed([text]);
+    return vectors[0];
+  }
+
+  /**
+   * Find similar items using a pre-computed embedding vector.
+   * Use embedText() first to get the vector, then call this for each search.
+   * This avoids re-embedding the same query multiple times.
+   */
+  async searchByVector(vector: number[], n: number = 4): Promise<SearchResult[]> {
+    if (!this.isLocal) {
+      throw new Error('searchByVector is only supported in local mode');
+    }
+
+    await this.ensureLoaded();
+
+    if (this.index!.getCount() === 0) {
+      this.log('No items in vault to search');
+      return [];
+    }
+
+    // Search index with pre-computed vector
+    const searchResult = this.index!.search(vector, n);
+
+    // Fetch items
+    const results: SearchResult[] = [];
+    for (let i = 0; i < searchResult.ids.length; i++) {
+      const itemId = searchResult.ids[i];
+      const distance = searchResult.distances[i];
+      const uuid = this.mapping[String(itemId)];
+
+      if (uuid) {
+        const itemText = await this.storage!.getItemText(uuid);
+        const itemMeta = await this.storage!.getItemMeta(uuid);
+
+        if (itemText && itemMeta) {
+          results.push({
+            data: itemText,
+            metadata: itemMeta,
+            distance
+          });
+        }
+      }
+    }
+
+    this.log(`Found ${results.length} similar items (by vector)`);
+    return results;
+  }
+
+  /**
    * Search across multiple vaults simultaneously
    * 
    * @param text - Query text

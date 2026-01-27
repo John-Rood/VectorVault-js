@@ -166,17 +166,24 @@ export class MemoryVectorIndex implements VectorIndex {
     fs.writeFileSync(tempIndex, buffer);
     fs.renameSync(tempIndex, indexPath);
 
-    // Save JSONL metadata (for compatibility and debugging)
-    const lines: string[] = [];
-    lines.push(JSON.stringify({ dims: this.dims }));
+    // Save JSONL metadata using incremental writes (avoids string length limit)
+    const tempMeta = metaPath + '.tmp';
 
-    for (const id of ids) {
-      const vec = this.vectors.get(id)!;
-      lines.push(JSON.stringify({ id, vector: Array.from(vec) }));
+    // Write header first
+    fs.writeFileSync(tempMeta, JSON.stringify({ dims: this.dims }) + '\n', 'utf-8');
+
+    // Append vectors in batches to avoid memory issues
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+      const batch = ids.slice(i, i + BATCH_SIZE);
+      const lines: string[] = [];
+      for (const id of batch) {
+        const vec = this.vectors.get(id)!;
+        lines.push(JSON.stringify({ id, vector: Array.from(vec) }));
+      }
+      fs.appendFileSync(tempMeta, lines.join('\n') + '\n', 'utf-8');
     }
 
-    const tempMeta = metaPath + '.tmp';
-    fs.writeFileSync(tempMeta, lines.join('\n') + '\n', 'utf-8');
     fs.renameSync(tempMeta, metaPath);
   }
 
