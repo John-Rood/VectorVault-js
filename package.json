@@ -1,6 +1,6 @@
 {
   "name": "vectorvault",
-  "version": "2.2.6",
+  "version": "2.2.7",
   "description": "Vector database for AI applications - pure TypeScript vector search with no native dependencies",
   "type": "module",
   "main": "dist/index.cjs",
