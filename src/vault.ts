@@ -186,8 +186,10 @@ export class Vault {
 
     // Load mapping
     this.mapping = await this.storage!.getMapping();
-    this.nextId = Object.keys(this.mapping).length;
-    this.log(`Loaded mapping with ${this.nextId} items`);
+    // Set nextId to max existing ID + 1 (not count, since we may have gaps after deletions)
+    const ids = Object.keys(this.mapping).map(Number);
+    this.nextId = ids.length > 0 ? Math.max(...ids) + 1 : 0;
+    this.log(`Loaded mapping with ${ids.length} items, nextId=${this.nextId}`);
 
     // Load vectors if they exist
     const vectorPaths = await this.storage!.loadVectors();
@@ -270,7 +272,7 @@ export class Vault {
 
     // Build the index
     this.index!.build();
-    this.log(`Generated ${vectors.length} embeddings, index built`);
+    this.log(`Generated ${vectors.length} embeddings, index built. Mapping size: ${Object.keys(this.mapping).length}, Index count: ${this.index!.getCount()}`);
   }
 
   /**
@@ -317,7 +319,7 @@ export class Vault {
     const savedCount = this.pendingItems.length;
     this.pendingItems = [];
 
-    this.log(`Saved ${savedCount} items, total: ${this.nextId}`);
+    this.log(`Saved ${savedCount} items, total: ${this.nextId}. Mapping size: ${Object.keys(this.mapping).length}, Index count: ${this.index!.getCount()}`);
   }
 
   /**
@@ -748,53 +750,39 @@ export class Vault {
 
     await this.ensureLoaded();
 
-    // Delete from storage and mapping
+    const idsSet = new Set(ids);
+    let deletedCount = 0;
+
+    // Delete from storage and mapping (but DON'T renumber)
     for (const id of ids) {
       const uuid = this.mapping[String(id)];
       if (uuid) {
         await this.storage!.deleteItem(uuid);
         delete this.mapping[String(id)];
+        deletedCount++;
       }
     }
 
-    // Rebuild index without deleted items
+    // Rebuild index WITHOUT renumbering - keep original IDs stable
     const newIndex = new MemoryVectorIndex(this.config.dims ?? 1536);
-    const newMapping: Record<string, string> = {};
-    let newId = 0;
 
-    // Get all remaining IDs in order
+    // Get all remaining IDs (keep their original IDs)
     const remainingIds = Object.keys(this.mapping)
       .map(Number)
       .sort((a, b) => a - b);
 
-    for (const oldId of remainingIds) {
-      const uuid = this.mapping[String(oldId)];
-      const vector = this.index!.getVector(oldId);
-      
+    for (const id of remainingIds) {
+      const vector = this.index!.getVector(id);
       if (vector) {
-        newIndex.add(newId, vector);
-        newMapping[String(newId)] = uuid;
-        
-        // Update metadata with new ID
-        const meta = await this.storage!.getItemMeta(uuid);
-        if (meta) {
-          meta.item_id = newId;
-          const text = await this.storage!.getItemText(uuid);
-          if (text) {
-            await this.storage!.upload(uuid, text, meta);
-          }
-        }
-        
-        newId++;
+        newIndex.add(id, vector); // Keep same ID!
       }
     }
 
     newIndex.build();
 
-    // Replace old index and mapping
+    // Replace old index (mapping stays the same, just with deleted items removed)
     this.index = newIndex;
-    this.mapping = newMapping;
-    this.nextId = newId;
+    // nextId stays the same - new items get IDs after the highest existing
 
     // Save
     await this.storage!.saveMapping(this.mapping);
@@ -802,7 +790,7 @@ export class Vault {
     const metaPath = this.storage!.getVectorsMetaPath();
     this.index.save(indexPath, metaPath);
 
-    this.log(`Deleted ${ids.length} items, ${this.nextId} remaining`);
+    this.log(`Deleted ${deletedCount} items, ${remainingIds.length} remaining`);
   }
 
   /**
