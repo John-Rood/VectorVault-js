@@ -83,7 +83,8 @@ export class MemoryVectorIndex implements VectorIndex {
     const similarities: Array<{ id: number; similarity: number }> = [];
 
     for (const id of this.sortedIds) {
-      const vec = this.vectors.get(id)!;
+      const vec = this.vectors.get(id);
+      if (!vec) continue; // Skip removed items (deferred delete)
       const similarity = this.innerProduct(normalized, vec);
       similarities.push({ id, similarity });
     }
@@ -114,6 +115,13 @@ export class MemoryVectorIndex implements VectorIndex {
   getVector(id: number): number[] | null {
     const vec = this.vectors.get(id);
     return vec ? Array.from(vec) : null;
+  }
+
+  /**
+   * Remove a vector by ID (deferred delete — sortedIds cleaned on next build())
+   */
+  remove(id: number): boolean {
+    return this.vectors.delete(id);
   }
 
   /**

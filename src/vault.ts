@@ -742,7 +742,7 @@ export class Vault {
   /**
    * Delete items by IDs
    */
-  async deleteItems(ids: number[]): Promise<void> {
+  async deleteItems(ids: number[], options?: { defer?: boolean }): Promise<void> {
     if (!this.isLocal) {
       await this.cloudStorage!.deleteItems(ids);
       return;
@@ -761,6 +761,15 @@ export class Vault {
         delete this.mapping[String(id)];
         deletedCount++;
       }
+    }
+
+    if (options?.defer) {
+      // Remove from in-memory index directly (no copy, no disk save)
+      for (const id of ids) {
+        this.index!.remove(id);
+      }
+      this.log(`Deferred delete: ${deletedCount} items removed (disk save deferred)`);
+      return;
     }
 
     // Rebuild index WITHOUT renumbering - keep original IDs stable
