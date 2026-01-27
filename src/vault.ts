@@ -214,7 +214,6 @@ export class Vault {
   add(text: string, meta?: Partial<ItemMetadata>): void {
     const uuid = randomUUID();
     this.pendingItems.push({ text, meta: meta ?? {}, uuid });
-    this.log(`Added item to queue (${this.pendingItems.length} pending)`);
   }
 
   /**
