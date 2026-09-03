@@ -1,7 +1,7 @@
 {
   "name": "vectorvault",
   "version": "2.3.0",
-  "description": "Vector database for AI applications - pure TypeScript vector search with no native dependencies",
+  "description": "The only fully native TypeScript vector database. Exact cosine search engine written from scratch, zero native bindings, zero runtime dependencies. Local vaults on disk or VectorVault Cloud, with built-in embeddings, chunking, and RAG chat.",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -30,12 +30,19 @@
   "keywords": [
     "vectorvault",
     "vector",
-    "database",
+    "vector-database",
+    "vector-search",
+    "similarity-search",
+    "cosine-similarity",
     "embeddings",
     "RAG",
     "AI",
+    "LLM",
     "local",
-    "typescript"
+    "pure-typescript",
+    "no-native-dependencies",
+    "typescript",
+    "nodejs"
   ],
   "author": "John Rood",
   "license": "MIT",
