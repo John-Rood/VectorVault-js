@@ -254,6 +254,7 @@ interface VaultConfig {
 | `editItem(id, newText)` | Replace text and re-embed |
 | `deleteItems(ids, { defer? })` | Delete items; ids stay stable. `defer: true` skips the disk rewrite |
 | `getTotalItems()` | Item count |
+| `listItemIds()` | All item ids, ascending. Ids can have gaps after deletes, so use this instead of `0..count` |
 | `getDistance(id1, id2)` | Angular distance between two stored items |
 | `getItemVector(id)` | Raw normalized vector for an item (local mode) |
 

@@ -802,6 +802,23 @@ export class Vault {
   }
 
   /**
+   * List the IDs of all items in the vault, sorted ascending.
+   *
+   * Local IDs are stable: deleting an item does not renumber the others, so
+   * IDs can have gaps. Never assume IDs are 0..getTotalItems()-1; use this.
+   */
+  async listItemIds(): Promise<number[]> {
+    if (!this.isLocal) {
+      // Cloud IDs are dense and zero-based
+      const total = await this.cloudStorage!.getTotalItems();
+      return Array.from({ length: total }, (_, i) => i);
+    }
+
+    await this.ensureLoaded();
+    return Object.keys(this.mapping).map(Number).sort((a, b) => a - b);
+  }
+
+  /**
    * Get total number of items in the vault
    */
   async getTotalItems(): Promise<number> {
@@ -1339,11 +1356,15 @@ export class Vault {
 
     this.log('Deleting existing items...');
     
-    // Delete existing items
-    const existingCount = await this.getTotalItems();
-    if (existingCount > 0) {
-      const existingIds = Array.from({ length: existingCount }, (_, i) => i);
+    // Delete existing items. Local IDs are stable and may have gaps after
+    // earlier deletes, so enumerate the real IDs instead of assuming 0..count.
+    const existingIds = await this.listItemIds();
+    if (existingIds.length > 0) {
       await this.deleteItems(existingIds);
+    }
+    if (this.isLocal) {
+      // The vault is now empty, so imported items can safely start at ID 0.
+      this.nextId = 0;
     }
 
     this.log(`Importing ${Object.keys(items).length} items...`);
@@ -1389,8 +1410,9 @@ export class Vault {
       vault: newVaultName
     });
 
-    // Get total items
-    const totalItems = await this.getTotalItems();
+    // Get the real item IDs (local IDs are stable and may have gaps after deletes)
+    const itemIds = await this.listItemIds();
+    const totalItems = itemIds.length;
     
     if (totalItems === 0) {
       this.log('No items to duplicate');
@@ -1399,7 +1421,7 @@ export class Vault {
 
     // Copy all items
     for (let i = 0; i < totalItems; i++) {
-      const items = await this.getItems([i]);
+      const items = await this.getItems([itemIds[i]]);
       if (items.length > 0) {
         const item = items[0];
         newVault.add(item.data, item.metadata);
